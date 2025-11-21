@@ -2,7 +2,7 @@
   "build_systems": [
     {
       "name": "App Pack Build All",
-      "shell_cmd": "just",
+      "shell_cmd": "just && build/src/appack_tests",
       "working_dir": "${project_path}",
       "file_regex": "(.*):(\\d+):(\\d+)(.*)",
       "shell": true,

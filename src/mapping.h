@@ -123,7 +123,7 @@ class FileMapping final : public Mapping {
 
   static std::unique_ptr<FileMapping> CreateReadOnly(
       const std::filesystem::path& file_path,
-      const std::optional<UniqueFD>& base_directory);
+      const std::optional<UniqueFD>& base_directory = std::nullopt);
 
   uint8_t* GetData() const override;
 
