@@ -1,5 +1,5 @@
 # Library
-add_library(new_cpp_project
+add_library(appack
   project.h
   project.cc
 )
@@ -9,16 +9,16 @@ get_filename_component(TEST_ASSETS_LOCATION ../assets ABSOLUTE)
 configure_file(fixtures_location.h.in fixtures_location.h @ONLY)
 
 # Unittests
-add_executable(new_cpp_project_tests
+add_executable(appack_tests
   unittests.cc
   ${CMAKE_CURRENT_BINARY_DIR}/fixtures_location.h
 )
-target_link_libraries(new_cpp_project_tests
-  new_cpp_project
+target_link_libraries(appack_tests
+  appack
   GTest::gtest_main
 )
-target_include_directories(new_cpp_project_tests
+target_include_directories(appack_tests
   PUBLIC
     ${CMAKE_CURRENT_BINARY_DIR}
 )
-gtest_discover_tests(new_cpp_project_tests)
+gtest_discover_tests(appack_tests)
