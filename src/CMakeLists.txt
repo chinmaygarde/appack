@@ -1,7 +1,25 @@
 # Library
 add_library(appack
-  project.h
-  project.cc
+  database.cc
+  database.h
+  mapping.cc
+  mapping.h
+  package.cc
+  package.h
+  unique_object.cc
+  unique_object.h
+)
+
+# Make these come from vcpkg.
+find_package(zstd CONFIG REQUIRED)
+find_package(blake3 CONFIG REQUIRED)
+find_package(unofficial-sqlite3 CONFIG REQUIRED)
+
+target_link_libraries(appack
+  PUBLIC
+    BLAKE3::blake3
+    unofficial::sqlite3::sqlite3
+    zstd::libzstd
 )
 
 # Configure Fixtures Location

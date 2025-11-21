@@ -1,6 +1,8 @@
 {
   "dependencies": [
+    "blake3",
     "gtest",
-    "sqlite3"
+    "sqlite3",
+    "zstd"
   ]
 }

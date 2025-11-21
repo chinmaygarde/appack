@@ -1,4 +1,9 @@
 #include "fixtures_location.h"
 #include "gtest/gtest.h"
+#include "package.h"
 
-TEST(EmptyTest, EmptyTest) {}
+namespace pack::testing {
+
+TEST(Appack, CanCreatePackage) {}
+
+}  // namespace pack::testing
