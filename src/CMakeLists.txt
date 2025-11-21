@@ -4,6 +4,7 @@ add_library(appack
   database.h
   mapping.cc
   mapping.h
+  mask.h
   package.cc
   package.h
   unique_object.cc
