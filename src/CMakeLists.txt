@@ -2,6 +2,8 @@
 add_library(appack
   database.cc
   database.h
+  hasher.cc
+  hasher.h
   mapping.cc
   mapping.h
   mask.h
