@@ -1,6 +1,9 @@
 build preset='debug':
 	@cmake --build --preset {{preset}}
 
+test preset='debug':
+	@ctest --preset {{preset}}
+
 alias gen := setup
 
 setup preset='debug':
