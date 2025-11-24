@@ -1,11 +1,16 @@
-build:
-	cmake --build --preset default
+build preset='debug':
+	@cmake --build --preset {{preset}}
 
-setup:
-	cmake --preset default
+alias gen := setup
+
+setup preset='debug':
+	cmake --preset {{preset}}
 
 clean:
 	rm -rf build
 
 sync:
 	git submodule update --init --recursive -j 8
+
+list-builds:
+	@cmake --list-presets
