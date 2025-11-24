@@ -34,6 +34,8 @@ configure_file(fixtures_location.h.in fixtures_location.h @ONLY)
 # Unittests
 add_executable(appack_tests
   unittests.cc
+  test_fixture.cc
+  test_fixture.h
   ${CMAKE_CURRENT_BINARY_DIR}/fixtures_location.h
 )
 target_link_libraries(appack_tests

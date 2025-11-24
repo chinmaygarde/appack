@@ -3,10 +3,13 @@
 #include "hasher.h"
 #include "mapping.h"
 #include "package.h"
+#include "test_fixture.h"
 
 namespace pack::testing {
 
-TEST(Appack, CanCreatePackage) {
+using Appack = TestFixture;
+
+TEST_F(Appack, CanCreatePackage) {
   auto mapping = FileMapping::CreateReadOnly(
       std::filesystem::path{TEST_ASSETS_LOCATION "kalimba.jpg"});
   ASSERT_NE(mapping, nullptr);
@@ -14,14 +17,14 @@ TEST(Appack, CanCreatePackage) {
   ASSERT_NE(mapping->GetData(), nullptr);
 }
 
-TEST(Appack, CanParseHashFromString) {
+TEST_F(Appack, CanParseHashFromString) {
   ASSERT_TRUE(
       ParseFromHexString(
           "0eedeb0be9888022d3f92a799eb56d160a911a997d6b0ef0e504865da422a3fd")
           .has_value());
 }
 
-TEST(Appack, CanHashContents) {
+TEST_F(Appack, CanHashContents) {
   auto mapping = FileMapping::CreateReadOnly(
       std::filesystem::path{TEST_ASSETS_LOCATION "kalimba.jpg"});
   ASSERT_NE(mapping, nullptr);

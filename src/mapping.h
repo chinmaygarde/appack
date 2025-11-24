@@ -107,9 +107,14 @@ PACK_ENUM_IS_MASK(FileFlags);
 UniqueFD OpenFile(const std::filesystem::path& file_path,
                   FilePermissions permissions,
                   Mask<FileFlags> flags,
-                  const std::optional<UniqueFD>& base_directory);
+                  const UniqueFD* base_directory);
 
 std::optional<uint64_t> FileGetSize(const UniqueFD& fd);
+
+std::optional<std::string> CreateTemporaryDirectory();
+
+bool RemoveDirectory(const std::string& dir_name,
+                     const UniqueFD* base_directory = nullptr);
 
 class FileMapping final : public Mapping {
  public:
@@ -122,7 +127,7 @@ class FileMapping final : public Mapping {
 
   static std::unique_ptr<FileMapping> CreateReadOnly(
       const std::filesystem::path& file_path,
-      const std::optional<UniqueFD>& base_directory = std::nullopt);
+      const UniqueFD* base_directory = nullptr);
 
   uint8_t* GetData() const override;
 

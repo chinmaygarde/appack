@@ -1,5 +1,11 @@
 #include "mapping.h"
 
+#include <dirent.h>
+
+#include <absl/log/check.h>
+#include <absl/log/log.h>
+#include <string>
+
 namespace pack {
 
 Mapping::~Mapping() = default;
@@ -19,10 +25,10 @@ bool FileMapping::IsValid() const {
 UniqueFD OpenFile(const std::filesystem::path& file_path,
                   FilePermissions permissions,
                   Mask<FileFlags> flags,
-                  const std::optional<UniqueFD>& base_directory) {
+                  const UniqueFD* base_directory) {
   int base_directory_fd = AT_FDCWD;
-  if (base_directory.has_value()) {
-    base_directory_fd = base_directory.value().get();
+  if (base_directory != nullptr) {
+    base_directory_fd = base_directory->get();
   }
   int oflag = 0;
   switch (permissions) {
@@ -49,6 +55,7 @@ UniqueFD OpenFile(const std::filesystem::path& file_path,
   int fd = PACK_TEMP_FAILURE_RETRY(
       ::openat(base_directory_fd, file_path.c_str(), oflag));
   if (fd == -1) {
+    PLOG(ERROR) << "Could not open file";
     return {};
   }
   return UniqueFD{fd};
@@ -114,7 +121,7 @@ FileMapping::FileMapping(MappingHandle handle) : handle_(handle) {}
 
 std::unique_ptr<FileMapping> FileMapping::CreateReadOnly(
     const std::filesystem::path& file_path,
-    const std::optional<UniqueFD>& base_directory) {
+    const UniqueFD* base_directory) {
   const auto fd =
       OpenFile(file_path, FilePermissions::kReadOnly, {}, base_directory);
   if (!fd.is_valid()) {
@@ -130,6 +137,78 @@ std::unique_ptr<FileMapping> FileMapping::CreateReadOnly(
                 MappingProtections::kRead,      //
                 MappingModifications::kPrivate  //
   );
+}
+
+std::optional<std::string> CreateTemporaryDirectory() {
+  std::string template_string = "/tmp/appack_temp_XXXXXX";
+  auto result = ::mkdtemp(template_string.data());
+  if (result == NULL) {
+    return std::nullopt;
+  }
+  return template_string;
+}
+
+struct UniqueDirTraits {
+  static DIR* InvalidValue() { return NULL; }
+
+  static bool IsValid(DIR* value) { return value != InvalidValue(); }
+
+  static void Free(DIR* d) {
+    auto result = ::closedir(d);
+    DCHECK(result == 0);
+  }
+};
+
+using UniqueDir = UniqueObject<DIR*, UniqueDirTraits>;
+
+bool RemoveDirectory(const std::string& dir_name,
+                     const UniqueFD* base_directory) {
+  auto dir_fd =
+      OpenFile(dir_name, FilePermissions::kReadOnly, {}, base_directory);
+  if (!dir_fd.is_valid()) {
+    return false;
+  }
+  UniqueDir dir(::fdopendir(dir_fd.get()));
+  if (!dir.is_valid()) {
+    PLOG(ERROR) << "Could not open directory";
+    return false;
+  }
+  while (true) {
+    auto dirent = ::readdir(dir.get());
+    if (dirent == NULL) {
+      break;
+    }
+    if (strcmp(dirent->d_name, ".") == 0 || strcmp(dirent->d_name, "..") == 0) {
+      continue;
+    }
+    const auto subdir_name = std::string{dirent->d_name, dirent->d_namlen};
+    if (dirent->d_type == DT_DIR) {
+      // Recursively remove the directory.
+      if (!RemoveDirectory(subdir_name, &dir_fd)) {
+        return false;
+      }
+    } else {
+      // Unlink the file.
+      bool unlink_success = ::unlinkat(dir_fd.get(),         //
+                                       subdir_name.c_str(),  //
+                                       0                     //
+                                       ) == 0;
+      if (!unlink_success) {
+        PLOG(ERROR) << "Could not remove the file " << subdir_name;
+        return false;
+      }
+    }
+  }
+  bool unlink_success =
+      ::unlinkat(base_directory ? base_directory->get() : AT_FDCWD,  //
+                 dir_name.c_str(),                                   //
+                 AT_REMOVEDIR                                        //
+                 ) == 0;
+  if (!unlink_success) {
+    PLOG(ERROR) << "Could not remove the directory";
+    return false;
+  }
+  return true;
 }
 
 }  // namespace pack
