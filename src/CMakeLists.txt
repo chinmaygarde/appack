@@ -14,6 +14,7 @@ add_library(appack
 )
 
 # Make these come from vcpkg.
+find_package(absl CONFIG REQUIRED)
 find_package(zstd CONFIG REQUIRED)
 find_package(blake3 CONFIG REQUIRED)
 find_package(unofficial-sqlite3 CONFIG REQUIRED)
@@ -23,6 +24,7 @@ target_link_libraries(appack
     BLAKE3::blake3
     unofficial::sqlite3::sqlite3
     zstd::libzstd
+    absl::absl_log
 )
 
 # Configure Fixtures Location

@@ -3,6 +3,7 @@
     "blake3",
     "gtest",
     "sqlite3",
-    "zstd"
+    "zstd",
+    "abseil"
   ]
 }

@@ -3,6 +3,7 @@
 #include <sqlite3.h>
 #include <filesystem>
 #include <memory>
+
 #include "unique_object.h"
 
 namespace pack {
@@ -29,6 +30,8 @@ class Database final : public std::enable_shared_from_this<Database> {
   }
 
   ~Database();
+
+  bool CreateTables();
 
   Database(const Database&) = delete;
 
