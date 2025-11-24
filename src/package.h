@@ -7,12 +7,7 @@ namespace pack {
 
 class Package {
  public:
-  Package(const std::filesystem::path& path) : database_(path) {
-    if (!database_.IsValid()) {
-      return;
-    }
-    is_valid_ = true;
-  }
+  Package(const std::filesystem::path& path);
 
   ~Package();
 
@@ -24,10 +19,10 @@ class Package {
 
   Package& operator=(Package&&) = delete;
 
-  bool IsValid() const { return is_valid_; }
+  bool IsValid() const;
 
  private:
-  Database database_;
+  std::shared_ptr<Database> database_;
   bool is_valid_ = false;
 };
 

@@ -2,6 +2,7 @@
 
 #include <sqlite3.h>
 #include <filesystem>
+#include <memory>
 #include "unique_object.h"
 
 namespace pack {
@@ -16,19 +17,18 @@ struct DatabaseHandleTraits {
 
 using DatabaseHandle = UniqueObject<sqlite3*, DatabaseHandleTraits>;
 
-class Database {
+class Database final : public std::enable_shared_from_this<Database> {
  public:
-  Database(const std::filesystem::path& location) {
-    sqlite3* db = nullptr;
-    auto result = sqlite3_open(location.c_str(), &db);
-    if (result != SQLITE_OK) {
-      return;
+  static std::shared_ptr<Database> Create(
+      const std::filesystem::path& location) {
+    auto db = std::shared_ptr<Database>(new Database(location));
+    if (!db->IsValid()) {
+      return nullptr;
     }
-    handle_.reset(db);
-    is_valid_ = true;
+    return db;
   }
 
-  ~Database() {}
+  ~Database();
 
   Database(const Database&) = delete;
 
@@ -38,10 +38,12 @@ class Database {
 
   Database& operator=(Database&&) = delete;
 
-  bool IsValid() const { return is_valid_; }
+  bool IsValid() const;
 
  private:
   bool is_valid_ = false;
+
+  Database(const std::filesystem::path& location);
 
   DatabaseHandle handle_;
 };
