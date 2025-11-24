@@ -32,9 +32,6 @@ UniqueFD OpenFile(const std::filesystem::path& file_path,
     case FilePermissions::kWriteOnly:
       oflag |= O_WRONLY;
       break;
-    case FilePermissions::kExecuteOnly:
-      oflag |= O_EXEC;
-      break;
     case FilePermissions::kReadWrite:
       oflag |= O_RDWR;
       break;

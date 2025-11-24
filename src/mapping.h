@@ -81,7 +81,6 @@ using UniqueMappingHandle =
 enum class FilePermissions {
   kReadOnly,
   kWriteOnly,
-  kExecuteOnly,
   kReadWrite,
 };
 
