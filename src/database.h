@@ -51,13 +51,18 @@ class Database final {
 
   bool IsValid() const;
 
-  bool WriteFileHashes(absl::flat_hash_map<std::string, ContentHash> hashes);
+  bool RegisterFile(std::string file_path,
+                    ContentHash hash,
+                    const Mapping& mapping,
+                    const Range& src_range);
 
  private:
   DatabaseHandle handle_;
   StatementHandle begin_stmt_;
   StatementHandle commit_stmt_;
   StatementHandle rollback_stmt_;
+  StatementHandle hash_stmt_;
+  StatementHandle content_stmt_;
   bool is_valid_ = false;
 };
 

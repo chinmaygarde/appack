@@ -1,5 +1,9 @@
 #include "package.h"
 
+#include <absl/log/log.h>
+
+#include "compressor.h"
+
 namespace pack {
 
 Package::Package(const std::filesystem::path& path) : database_(path) {
@@ -17,20 +21,31 @@ bool Package::IsValid() const {
 
 bool Package::RegisterFilesInDirectory(const std::filesystem::path& path,
                                        const UniqueFD* base_directory) {
-  absl::flat_hash_map<std::string, ContentHash> hashes;
   if (!IterateDirectoryRecursively(
-          [&hashes](const std::string& file_path, const UniqueFD& fd) {
-            auto mapping = FileMapping::CreateReadOnly(fd);
+          [&](const std::string& file_path, const UniqueFD& fd) {
+            const auto mapping = FileMapping::CreateReadOnly(fd);
             if (!mapping) {
+              LOG(ERROR) << "Could not create file mapping for " << file_path;
               return false;
             }
-            hashes[file_path] = GetMappingHash(*mapping);
+            const auto hash = GetMappingHash(*mapping);
+            const auto compressed_mapping = CompressMapping(*mapping);
+            if (!compressed_mapping) {
+              LOG(ERROR) << "Could not compress mapping " << file_path;
+              return false;
+            }
+            if (!database_.RegisterFile(file_path, hash,
+                                        *compressed_mapping.data,
+                                        compressed_mapping.range)) {
+              LOG(ERROR) << "Could not write file hash " << file_path;
+              return false;
+            }
             return true;
           },
           path, base_directory)) {
     return false;
   }
-  return database_.WriteFileHashes(std::move(hashes));
+  return true;
 }
 
 }  // namespace pack

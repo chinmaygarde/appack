@@ -38,6 +38,7 @@ TEST_F(Appack, CanHashContents) {
 TEST_F(Appack, CanCreatePackage) {
   Package package(GetTempDirPath() + "/database.appack");
   ASSERT_TRUE(package.IsValid());
+  ASSERT_TRUE(package.RegisterFilesInDirectory(TEST_ASSETS_LOCATION));
 }
 
 }  // namespace pack::testing

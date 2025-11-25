@@ -75,15 +75,11 @@ std::optional<uint64_t> FileGetSize(const UniqueFD& fd) {
 }
 
 std::unique_ptr<FileMapping> FileMapping::Create(
-    const UniqueFD& file,
+    std::optional<int> fd,
     size_t mapping_size,
     size_t mapping_offset,
     Mask<MappingProtections> protections,
     MappingModifications mods) {
-  if (!file.is_valid()) {
-    return nullptr;
-  }
-
   int prot = 0;
   if (protections & MappingProtections::kNone) {
     prot |= PROT_NONE;
@@ -107,14 +103,31 @@ std::unique_ptr<FileMapping> FileMapping::Create(
       flags |= MAP_SHARED;
       break;
   }
+  if (fd.has_value()) {
+    flags |= MAP_FILE;
+  } else {
+    flags |= MAP_ANONYMOUS;
+  }
 
   auto mapping =
-      ::mmap(NULL, mapping_size, prot, flags, file.get(), mapping_offset);
+      ::mmap(NULL, mapping_size, prot, flags, fd.value_or(-1), mapping_offset);
   if (mapping == MAP_FAILED) {
     return nullptr;
   }
   return std::unique_ptr<FileMapping>(
       new FileMapping(MappingHandle{mapping, mapping_size}));
+}
+
+std::unique_ptr<FileMapping> FileMapping::Create(
+    const UniqueFD& file,
+    size_t mapping_size,
+    size_t mapping_offset,
+    Mask<MappingProtections> protections,
+    MappingModifications mods) {
+  if (!file.is_valid()) {
+    return nullptr;
+  }
+  return Create(file.get(), mapping_size, mapping_offset, protections, mods);
 }
 
 FileMapping::FileMapping(MappingHandle handle) : handle_(handle) {}
@@ -224,6 +237,7 @@ static bool IterateDirectoryRecursively(DirectoryIterator iterator,
   auto dir_fd =
       OpenFile(dir_name, FilePermissions::kReadOnly, {}, base_directory);
   if (!dir_fd.is_valid()) {
+    PLOG(ERROR) << "Could not open directory " << dir_name;
     return false;
   }
   UniqueDir dir(::fdopendir(dir_fd.get()));
@@ -268,6 +282,13 @@ bool IterateDirectoryRecursively(DirectoryIterator iterator,
                                  const std::string& dir_name,
                                  const UniqueFD* base_directory) {
   return IterateDirectoryRecursively(iterator, dir_name, base_directory, "");
+}
+
+std::unique_ptr<FileMapping> FileMapping::CreateAnonymousReadWrite(
+    uint64_t size) {
+  return Create(std::nullopt, size, 0u,
+                MappingProtections::kRead | MappingProtections::kWrite,
+                MappingModifications::kPrivate);
 }
 
 }  // namespace pack

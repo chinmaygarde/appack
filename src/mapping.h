@@ -25,6 +25,11 @@ namespace pack {
     __result;                                        \
   })
 
+struct Range {
+  uint64_t offset = 0u;
+  uint64_t length = 0u;
+};
+
 class Mapping {
  public:
   virtual uint8_t* GetData() const = 0;
@@ -138,6 +143,8 @@ class FileMapping final : public Mapping {
 
   static std::unique_ptr<FileMapping> CreateReadOnly(const UniqueFD& file);
 
+  static std::unique_ptr<FileMapping> CreateAnonymousReadWrite(uint64_t size);
+
   uint8_t* GetData() const override;
 
   uint64_t GetSize() const override;
@@ -148,6 +155,13 @@ class FileMapping final : public Mapping {
   MappingHandle handle_;
 
   FileMapping(MappingHandle handle);
+
+  static std::unique_ptr<FileMapping> Create(
+      std::optional<int> file,
+      size_t mapping_size,
+      size_t mapping_offset,
+      Mask<MappingProtections> protections,
+      MappingModifications mods);
 };
 
 }  // namespace pack

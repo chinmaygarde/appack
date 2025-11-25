@@ -1,5 +1,7 @@
 # Library
 add_library(appack
+  compressor.cc
+  compressor.h
   database.cc
   database.h
   hasher.cc
