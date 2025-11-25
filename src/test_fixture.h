@@ -17,6 +17,8 @@ class TestFixture : public ::testing::Test {
 
   void TearDown() override { ASSERT_TRUE(RemoveDirectory(temp_dir_.value())); }
 
+  std::string GetTempDirPath() const { return temp_dir_.value_or(""); }
+
  private:
   std::optional<std::string> temp_dir_;
 };

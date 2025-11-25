@@ -9,7 +9,7 @@ namespace pack::testing {
 
 using Appack = TestFixture;
 
-TEST_F(Appack, CanCreatePackage) {
+TEST_F(Appack, CanCreateMapping) {
   auto mapping = FileMapping::CreateReadOnly(
       std::filesystem::path{TEST_ASSETS_LOCATION "kalimba.jpg"});
   ASSERT_NE(mapping, nullptr);
@@ -33,6 +33,11 @@ TEST_F(Appack, CanHashContents) {
       "0eedeb0be9888022d3f92a799eb56d160a911a997d6b0ef0e504865da422a3fd");
   ASSERT_TRUE(h2.has_value());
   ASSERT_EQ(h1, h2.value());
+}
+
+TEST_F(Appack, CanCreatePackage) {
+  Package package(GetTempDirPath() + "/database.appack");
+  ASSERT_TRUE(package.IsValid());
 }
 
 }  // namespace pack::testing

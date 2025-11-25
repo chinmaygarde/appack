@@ -7,8 +7,13 @@ Package::Package(const std::filesystem::path& path)
   if (!database_) {
     return;
   }
+  if (!database_->CreateTables()) {
+    return;
+  }
   is_valid_ = true;
 }
+
+Package::~Package() = default;
 
 bool Package::IsValid() const {
   return is_valid_;

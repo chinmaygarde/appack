@@ -24,6 +24,7 @@ Database::Database(const std::filesystem::path& location) {
   sqlite3* db = nullptr;
   auto result = ::sqlite3_open(location.c_str(), &db);
   if (result != SQLITE_OK) {
+    LOG(ERROR) << "Could not open database.";
     return;
   }
   handle_.reset(db);
@@ -43,6 +44,7 @@ static StatementHandle CreateStatement(
   if (::sqlite3_prepare_v2(db.get(), statement_string.data(),
                            statement_string.size(), &statement_handle,
                            nullptr) != SQLITE_OK) {
+    LOG(ERROR) << "Could not prepare statement.";
     return {};
   }
   return StatementHandle{statement_handle};
@@ -60,9 +62,11 @@ bool Database::CreateTables() {
     );
   )~");
   if (::sqlite3_reset(create_files_table_statement.get()) != SQLITE_OK) {
+    LOG(ERROR) << "Could not reset statement.";
     return false;
   }
   if (::sqlite3_step(create_files_table_statement.get()) != SQLITE_DONE) {
+    LOG(ERROR) << "Could not step.";
     return false;
   }
   return true;

@@ -181,7 +181,7 @@ bool RemoveDirectory(const std::string& dir_name,
     if (strcmp(dirent->d_name, ".") == 0 || strcmp(dirent->d_name, "..") == 0) {
       continue;
     }
-    const auto subdir_name = std::string{dirent->d_name, dirent->d_namlen};
+    const auto subdir_name = std::string{dirent->d_name};
     if (dirent->d_type == DT_DIR) {
       // Recursively remove the directory.
       if (!RemoveDirectory(subdir_name, &dir_fd)) {
