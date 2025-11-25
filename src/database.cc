@@ -79,6 +79,28 @@ bool Database::IsValid() const {
 
 bool Database::WriteFileHashes(
     absl::flat_hash_map<std::string, ContentHash> hashes) {
+  const auto stmt = CreateStatement(handle_, R"~(
+    INSERT INTO TABLE appack_files(file_name, content_hash) VALUES (?, ?);
+  )~");
+  if (!stmt.is_valid()) {
+    return false;
+  }
+  for (const auto& hv : hashes) {
+    if (::sqlite3_reset(stmt.get()) != SQLITE_OK) {
+      return false;
+    }
+    if (::sqlite3_bind_text(stmt.get(), 1, hv.first.data(), hv.first.size(),
+                            SQLITE_TRANSIENT) != SQLITE_OK) {
+      return false;
+    }
+    if (::sqlite3_bind_blob(stmt.get(), 2, hv.second.data(), hv.second.size(),
+                            SQLITE_TRANSIENT) != SQLITE_OK) {
+      return false;
+    }
+    if (::sqlite3_step(stmt.get()) != SQLITE_DONE) {
+      return false;
+    }
+  }
   return false;
 }
 
