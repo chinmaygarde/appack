@@ -1,24 +1,10 @@
 #include "database.h"
 
+#include <absl/cleanup/cleanup.h>
 #include <absl/log/check.h>
 #include <absl/log/log.h>
 
 namespace pack {
-
-struct StatementHandleTraits {
-  static sqlite3_stmt* InvalidValue() { return nullptr; }
-
-  static bool IsValid(const sqlite3_stmt* value) {
-    return value != InvalidValue();
-  }
-
-  static void Free(sqlite3_stmt* handle) {
-    const auto result = sqlite3_finalize(handle);
-    DCHECK(result == SQLITE_OK);
-  }
-};
-
-using StatementHandle = UniqueObject<sqlite3_stmt*, StatementHandleTraits>;
 
 static StatementHandle CreateStatement(
     const DatabaseHandle& db,
@@ -68,6 +54,15 @@ Database::Database(const std::filesystem::path& location) {
     return;
   }
 
+  begin_stmt_ = CreateStatement(handle_, "BEGIN TRANSACTION;");
+  commit_stmt_ = CreateStatement(handle_, "COMMIT TRANSACTION;");
+  rollback_stmt_ = CreateStatement(handle_, "ROLLBACK TRANSACTION;");
+
+  if (!begin_stmt_.is_valid() || !commit_stmt_.is_valid() ||
+      !rollback_stmt_.is_valid()) {
+    return false;
+  }
+
   is_valid_ = true;
 }
 
@@ -85,6 +80,13 @@ bool Database::WriteFileHashes(
   if (!stmt.is_valid()) {
     return false;
   }
+  if (::sqlite3_step(begin_stmt_.get()) != SQLITE_DONE) {
+    return false;
+  }
+  absl::Cleanup rollback = [&]() {
+    auto result = ::sqlite3_step(rollback_stmt_.get());
+    DCHECK(result == SQLITE_DONE);
+  };
   for (const auto& hv : hashes) {
     if (::sqlite3_reset(stmt.get()) != SQLITE_OK) {
       return false;
@@ -101,7 +103,8 @@ bool Database::WriteFileHashes(
       return false;
     }
   }
-  return false;
+  std::move(rollback).Cancel();
+  return ::sqlite3_step(commit_stmt_.get()) == SQLITE_DONE;
 }
 
 }  // namespace pack

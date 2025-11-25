@@ -1,6 +1,7 @@
 #pragma once
 
 #include <absl/container/flat_hash_map.h>
+#include <absl/log/check.h>
 #include <sqlite3.h>
 #include <filesystem>
 
@@ -18,6 +19,21 @@ struct DatabaseHandleTraits {
 };
 
 using DatabaseHandle = UniqueObject<sqlite3*, DatabaseHandleTraits>;
+
+struct StatementHandleTraits {
+  static sqlite3_stmt* InvalidValue() { return nullptr; }
+
+  static bool IsValid(const sqlite3_stmt* value) {
+    return value != InvalidValue();
+  }
+
+  static void Free(sqlite3_stmt* handle) {
+    const auto result = sqlite3_finalize(handle);
+    DCHECK(result == SQLITE_OK);
+  }
+};
+
+using StatementHandle = UniqueObject<sqlite3_stmt*, StatementHandleTraits>;
 
 class Database final {
  public:
@@ -39,6 +55,9 @@ class Database final {
 
  private:
   DatabaseHandle handle_;
+  StatementHandle begin_stmt_;
+  StatementHandle commit_stmt_;
+  StatementHandle rollback_stmt_;
   bool is_valid_ = false;
 };
 
