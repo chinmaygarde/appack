@@ -1,6 +1,7 @@
 #include "mapping.h"
 
 #include <dirent.h>
+#include <sys/stat.h>
 
 #include <absl/log/check.h>
 #include <absl/log/log.h>
@@ -289,6 +290,48 @@ std::unique_ptr<FileMapping> FileMapping::CreateAnonymousReadWrite(
   return Create(std::nullopt, size, 0u,
                 MappingProtections::kRead | MappingProtections::kWrite,
                 MappingModifications::kPrivate);
+}
+
+bool IsDirectory(const std::filesystem::path& file_path,
+                 const UniqueFD* base_directory) {
+  struct stat statbuf = {};
+  if (::fstatat(base_directory == nullptr ? AT_FDCWD : base_directory->get(),
+                file_path.c_str(), &statbuf, 0) != 0) {
+    return false;
+  }
+  return S_ISDIR(statbuf.st_mode);
+}
+
+static bool MakeDirectory(const std::filesystem::path& file_path,
+                          const UniqueFD* base_directory) {
+  if (::mkdirat(base_directory == nullptr ? AT_FDCWD : base_directory->get(),
+                file_path.c_str(), S_IRWXU | S_IRWXG | S_IRWXO) != 0) {
+    PLOG(ERROR) << "Could not make directory " << file_path;
+    return false;
+  }
+  return true;
+}
+
+bool MakeDirectories(const std::filesystem::path& file_path,
+                     const UniqueFD* base_directory) {
+  // Fast path.
+  if (IsDirectory(file_path, base_directory)) {
+    return true;
+  }
+  std::filesystem::path path;
+  for (const auto& p : file_path) {
+    if (path.empty()) {
+      path += p;
+    } else {
+      path /= p;
+    }
+    if (!IsDirectory(path)) {
+      if (!MakeDirectory(path, base_directory)) {
+        return false;
+      }
+    }
+  }
+  return true;
 }
 
 }  // namespace pack

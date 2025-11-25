@@ -117,6 +117,12 @@ UniqueFD OpenFile(const std::filesystem::path& file_path,
 
 std::optional<uint64_t> FileGetSize(const UniqueFD& fd);
 
+bool IsDirectory(const std::filesystem::path& file_path,
+                 const UniqueFD* base_directory = nullptr);
+
+bool MakeDirectories(const std::filesystem::path& file_path,
+                     const UniqueFD* base_directory = nullptr);
+
 std::optional<std::string> CreateTemporaryDirectory();
 
 bool RemoveDirectory(const std::string& dir_name,

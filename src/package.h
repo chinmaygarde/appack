@@ -30,13 +30,21 @@ class Package {
                                 const UniqueFD* base_directory = nullptr);
 
   bool WriteRegisteredFilesToDirectory(
-      const std::filesystem::path& path) const {
+      const std::filesystem::path& root_path,
+      const UniqueFD* base_directory = nullptr) const {
     auto files = database_.GetRegisteredFiles();
     if (!files.has_value()) {
       return false;
     }
     for (const auto& file : files.value()) {
-      LOG(ERROR) << file.first;
+      const auto path = root_path / std::filesystem::path{file.first};
+      if (path.has_parent_path()) {
+        if (!MakeDirectories(path.parent_path(), base_directory)) {
+          LOG(ERROR) << "Could not make make directories: "
+                     << path.parent_path();
+          return false;
+        }
+      }
     }
     return true;
   }
