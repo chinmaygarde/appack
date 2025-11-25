@@ -4,6 +4,7 @@
 #include <absl/log/check.h>
 #include <sqlite3.h>
 #include <filesystem>
+#include <tuple>
 
 #include "hasher.h"
 #include "unique_object.h"
@@ -55,6 +56,9 @@ class Database final {
                     ContentHash hash,
                     const Mapping& mapping,
                     const Range& src_range);
+
+  std::optional<std::vector<std::pair<std::string, ContentHash>>>
+  GetRegisteredFiles() const;
 
  private:
   DatabaseHandle handle_;

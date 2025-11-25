@@ -3,6 +3,7 @@
 #include <filesystem>
 
 #include <absl/container/flat_hash_map.h>
+#include <absl/log/log.h>
 #include "database.h"
 #include "hasher.h"
 #include "mapping.h"
@@ -27,6 +28,18 @@ class Package {
 
   bool RegisterFilesInDirectory(const std::filesystem::path& path,
                                 const UniqueFD* base_directory = nullptr);
+
+  bool WriteRegisteredFilesToDirectory(
+      const std::filesystem::path& path) const {
+    auto files = database_.GetRegisteredFiles();
+    if (!files.has_value()) {
+      return false;
+    }
+    for (const auto& file : files.value()) {
+      LOG(ERROR) << file.first;
+    }
+    return true;
+  }
 
  private:
   Database database_;

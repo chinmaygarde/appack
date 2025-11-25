@@ -160,4 +160,48 @@ bool Database::RegisterFile(std::string file_path,
   return true;
 }
 
+std::optional<std::vector<std::pair<std::string, ContentHash>>>
+Database::GetRegisteredFiles() const {
+  auto stmt = CreateStatement(handle_, R"~(
+        SELECT file_name, content_hash FROM appack_files;
+      )~");
+  if (!stmt.is_valid()) {
+    LOG(ERROR) << "Invalid statement.";
+    return std::nullopt;
+  }
+
+  if (::sqlite3_reset(stmt.get()) != SQLITE_OK) {
+    LOG(ERROR) << "Could not reset statement.";
+    return std::nullopt;
+  }
+
+  std::vector<std::pair<std::string, ContentHash>> results;
+
+  while (true) {
+    switch (auto step_result = ::sqlite3_step(stmt.get())) {
+      case SQLITE_DONE:
+        return results;
+      case SQLITE_ROW: {
+        auto file_name = reinterpret_cast<const char*>(
+            ::sqlite3_column_text(stmt.get(), 0u));
+        auto content_hash = ::sqlite3_column_blob(stmt.get(), 1u);
+        auto content_hash_length = ::sqlite3_column_bytes(stmt.get(), 1u);
+        ContentHash hash;
+        if (content_hash_length != hash.size()) {
+          LOG(ERROR) << "Content hash size was unexpected "
+                     << content_hash_length;
+          return std::nullopt;
+        }
+        ::memmove(hash.data(), content_hash, hash.size());
+        results.emplace_back(std::make_pair(std::string{file_name}, hash));
+      } break;
+      default:
+        LOG(ERROR) << "Could not step " << step_result;
+        return std::nullopt;
+    }
+  }
+
+  return std::nullopt;
+}
+
 }  // namespace pack
