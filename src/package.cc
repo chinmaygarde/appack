@@ -2,12 +2,8 @@
 
 namespace pack {
 
-Package::Package(const std::filesystem::path& path)
-    : database_(Database::Create(path)) {
-  if (!database_) {
-    return;
-  }
-  if (!database_->CreateTables()) {
+Package::Package(const std::filesystem::path& path) : database_(path) {
+  if (!database_.IsValid()) {
     return;
   }
   is_valid_ = true;

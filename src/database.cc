@@ -20,23 +20,6 @@ struct StatementHandleTraits {
 
 using StatementHandle = UniqueObject<sqlite3_stmt*, StatementHandleTraits>;
 
-Database::Database(const std::filesystem::path& location) {
-  sqlite3* db = nullptr;
-  auto result = ::sqlite3_open(location.c_str(), &db);
-  if (result != SQLITE_OK) {
-    LOG(ERROR) << "Could not open database.";
-    return;
-  }
-  handle_.reset(db);
-  is_valid_ = true;
-}
-
-Database::~Database() {}
-
-bool Database::IsValid() const {
-  return is_valid_;
-}
-
 static StatementHandle CreateStatement(
     const DatabaseHandle& db,
     const std::string_view& statement_string) {
@@ -50,15 +33,15 @@ static StatementHandle CreateStatement(
   return StatementHandle{statement_handle};
 }
 
-bool Database::CreateTables() {
-  if (!IsValid()) {
-    return false;
-  }
-
-  const auto create_files_table_statement = CreateStatement(handle_, R"~(
+static bool CreateTables(const DatabaseHandle& handle) {
+  const auto create_files_table_statement = CreateStatement(handle, R"~(
     CREATE TABLE IF NOT EXISTS appack_files(
-      file TEXT PRIMARY KEY,
-      content_hash BLOB NOT NULL
+      file_name       TEXT    PRIMARY KEY,
+      content_hash    BLOB    NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS appack_file_contents(
+      content_hash    BLOB    PRIMARY KEY,
+      contents BLOB           NOT NULL
     );
   )~");
   if (::sqlite3_reset(create_files_table_statement.get()) != SQLITE_OK) {
@@ -70,6 +53,28 @@ bool Database::CreateTables() {
     return false;
   }
   return true;
+}
+
+Database::Database(const std::filesystem::path& location) {
+  sqlite3* db = nullptr;
+  auto result = ::sqlite3_open(location.c_str(), &db);
+  if (result != SQLITE_OK) {
+    LOG(ERROR) << "Could not open database.";
+    return;
+  }
+  handle_.reset(db);
+
+  if (!CreateTables(handle_)) {
+    return;
+  }
+
+  is_valid_ = true;
+}
+
+Database::~Database() {}
+
+bool Database::IsValid() const {
+  return is_valid_;
 }
 
 }  // namespace pack

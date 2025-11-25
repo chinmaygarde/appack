@@ -22,7 +22,7 @@ class Package {
   bool IsValid() const;
 
  private:
-  std::shared_ptr<Database> database_;
+  Database database_;
   bool is_valid_ = false;
 };
 
