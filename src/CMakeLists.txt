@@ -21,10 +21,11 @@ find_package(unofficial-sqlite3 CONFIG REQUIRED)
 
 target_link_libraries(appack
   PUBLIC
+    absl::absl_log
+    absl::flat_hash_map
     BLAKE3::blake3
     unofficial::sqlite3::sqlite3
     zstd::libzstd
-    absl::absl_log
 )
 
 # Configure Fixtures Location

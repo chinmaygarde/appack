@@ -1,7 +1,11 @@
 #pragma once
 
 #include <filesystem>
+
+#include <absl/container/flat_hash_map.h>
 #include "database.h"
+#include "hasher.h"
+#include "mapping.h"
 
 namespace pack {
 
@@ -20,6 +24,9 @@ class Package {
   Package& operator=(Package&&) = delete;
 
   bool IsValid() const;
+
+  bool RegisterFilesInDirectory(const std::filesystem::path& path,
+                                const UniqueFD* base_directory = nullptr);
 
  private:
   Database database_;

@@ -9,15 +9,15 @@ namespace pack::testing {
 
 class TestFixture : public ::testing::Test {
  public:
-  TestFixture() : temp_dir_(CreateTemporaryDirectory()) {}
+  TestFixture();
 
-  ~TestFixture() {}
+  ~TestFixture();
 
-  void SetUp() override { ASSERT_TRUE(temp_dir_.has_value()); }
+  void SetUp() override;
 
-  void TearDown() override { ASSERT_TRUE(RemoveDirectory(temp_dir_.value())); }
+  void TearDown() override;
 
-  std::string GetTempDirPath() const { return temp_dir_.value_or(""); }
+  std::string GetTempDirPath() const;
 
  private:
   std::optional<std::string> temp_dir_;

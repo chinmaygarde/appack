@@ -71,10 +71,15 @@ Database::Database(const std::filesystem::path& location) {
   is_valid_ = true;
 }
 
-Database::~Database() {}
+Database::~Database() = default;
 
 bool Database::IsValid() const {
   return is_valid_;
+}
+
+bool Database::WriteFileHashes(
+    absl::flat_hash_map<std::string, ContentHash> hashes) {
+  return false;
 }
 
 }  // namespace pack

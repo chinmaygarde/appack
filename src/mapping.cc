@@ -119,11 +119,7 @@ std::unique_ptr<FileMapping> FileMapping::Create(
 
 FileMapping::FileMapping(MappingHandle handle) : handle_(handle) {}
 
-std::unique_ptr<FileMapping> FileMapping::CreateReadOnly(
-    const std::filesystem::path& file_path,
-    const UniqueFD* base_directory) {
-  const auto fd =
-      OpenFile(file_path, FilePermissions::kReadOnly, {}, base_directory);
+std::unique_ptr<FileMapping> FileMapping::CreateReadOnly(const UniqueFD& fd) {
   if (!fd.is_valid()) {
     return nullptr;
   }
@@ -137,6 +133,13 @@ std::unique_ptr<FileMapping> FileMapping::CreateReadOnly(
                 MappingProtections::kRead,      //
                 MappingModifications::kPrivate  //
   );
+}
+
+std::unique_ptr<FileMapping> FileMapping::CreateReadOnly(
+    const std::filesystem::path& file_path,
+    const UniqueFD* base_directory) {
+  return CreateReadOnly(
+      OpenFile(file_path, FilePermissions::kReadOnly, {}, base_directory));
 }
 
 std::optional<std::string> CreateTemporaryDirectory() {

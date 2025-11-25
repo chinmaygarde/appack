@@ -135,6 +135,8 @@ class FileMapping final : public Mapping {
       const std::filesystem::path& file_path,
       const UniqueFD* base_directory = nullptr);
 
+  static std::unique_ptr<FileMapping> CreateReadOnly(const UniqueFD& file);
+
   uint8_t* GetData() const override;
 
   uint64_t GetSize() const override;
