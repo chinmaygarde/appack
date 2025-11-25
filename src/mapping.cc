@@ -211,4 +211,60 @@ bool RemoveDirectory(const std::string& dir_name,
   return true;
 }
 
+static bool IterateDirectoryRecursively(DirectoryIterator iterator,
+                                        const std::string& dir_name,
+                                        const UniqueFD* base_directory,
+                                        std::string file_path) {
+  if (!iterator) {
+    return false;
+  }
+  auto dir_fd =
+      OpenFile(dir_name, FilePermissions::kReadOnly, {}, base_directory);
+  if (!dir_fd.is_valid()) {
+    return false;
+  }
+  UniqueDir dir(::fdopendir(dir_fd.get()));
+  if (!dir.is_valid()) {
+    PLOG(ERROR) << "Could not open directory";
+    return false;
+  }
+  while (true) {
+    auto dirent = ::readdir(dir.get());
+    if (dirent == NULL) {
+      break;
+    }
+    if (strcmp(dirent->d_name, ".") == 0 || strcmp(dirent->d_name, "..") == 0) {
+      continue;
+    }
+    const auto subfile_name = std::string{dirent->d_name};
+    const auto subfile_path =
+        file_path.empty() ? subfile_name : file_path + "/" + subfile_name;
+    if (dirent->d_type == DT_DIR) {
+      // Recursively iterator into the directory.
+      if (!IterateDirectoryRecursively(iterator, subfile_name, &dir_fd,
+                                       subfile_path)) {
+        return false;
+      }
+    } else if (dirent->d_type) {
+      // Invoke the iterator.
+      auto subfile_fd =
+          OpenFile(subfile_name, FilePermissions::kReadOnly, {}, &dir_fd);
+      if (!subfile_fd.is_valid()) {
+        PLOG(ERROR) << "Could not open file " << subfile_name;
+        return false;
+      }
+      if (!iterator(subfile_path, subfile_fd)) {
+        return false;
+      }
+    }
+  }
+  return true;
+}
+
+bool IterateDirectoryRecursively(DirectoryIterator iterator,
+                                 const std::string& dir_name,
+                                 const UniqueFD* base_directory) {
+  return IterateDirectoryRecursively(iterator, dir_name, base_directory, "");
+}
+
 }  // namespace pack

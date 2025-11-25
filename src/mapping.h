@@ -116,6 +116,12 @@ std::optional<std::string> CreateTemporaryDirectory();
 bool RemoveDirectory(const std::string& dir_name,
                      const UniqueFD* base_directory = nullptr);
 
+using DirectoryIterator =
+    std::function<bool(const std::string& file_path, const UniqueFD& fd)>;
+bool IterateDirectoryRecursively(DirectoryIterator iterator,
+                                 const std::string& dir_name,
+                                 const UniqueFD* base_directory = nullptr);
+
 class FileMapping final : public Mapping {
  public:
   static std::unique_ptr<FileMapping> Create(
