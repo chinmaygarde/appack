@@ -60,7 +60,7 @@ Database::Database(const std::filesystem::path& location) {
 
   if (!begin_stmt_.is_valid() || !commit_stmt_.is_valid() ||
       !rollback_stmt_.is_valid()) {
-    return false;
+    return;
   }
 
   is_valid_ = true;
