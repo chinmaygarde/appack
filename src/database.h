@@ -4,6 +4,7 @@
 #include <absl/log/check.h>
 #include <sqlite3.h>
 #include <filesystem>
+#include <functional>
 #include <tuple>
 
 #include "hasher.h"
@@ -59,6 +60,10 @@ class Database final {
 
   std::optional<std::vector<std::pair<std::string, ContentHash>>>
   GetRegisteredFiles() const;
+
+  using ContentMapping =
+      std::function<bool(const uint8_t* data, uint64_t length)>;
+  bool ReadContentMapping(ContentHash hash, ContentMapping callback) const;
 
  private:
   DatabaseHandle handle_;

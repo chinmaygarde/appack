@@ -5,6 +5,7 @@
 
 #include <absl/log/check.h>
 #include <absl/log/log.h>
+#include <sys/mman.h>
 #include <string>
 
 namespace pack {
@@ -56,7 +57,7 @@ UniqueFD OpenFile(const std::filesystem::path& file_path,
   int fd = PACK_TEMP_FAILURE_RETRY(
       ::openat(base_directory_fd, file_path.c_str(), oflag));
   if (fd == -1) {
-    PLOG(ERROR) << "Could not open file";
+    PLOG(ERROR) << "Could not open file " << file_path;
     return {};
   }
   return UniqueFD{fd};
@@ -113,10 +114,16 @@ std::unique_ptr<FileMapping> FileMapping::Create(
   auto mapping =
       ::mmap(NULL, mapping_size, prot, flags, fd.value_or(-1), mapping_offset);
   if (mapping == MAP_FAILED) {
+    PLOG(ERROR) << "mmap failed.";
     return nullptr;
   }
-  return std::unique_ptr<FileMapping>(
+  auto file_mapping = std::unique_ptr<FileMapping>(
       new FileMapping(MappingHandle{mapping, mapping_size}));
+  if (!file_mapping->IsValid()) {
+    LOG(ERROR) << "Invalid file mapping";
+    return nullptr;
+  }
+  return file_mapping;
 }
 
 std::unique_ptr<FileMapping> FileMapping::Create(
@@ -330,6 +337,39 @@ bool MakeDirectories(const std::filesystem::path& file_path,
         return false;
       }
     }
+  }
+  return true;
+}
+
+bool Truncate(const UniqueFD& fd, uint64_t size) {
+  if (::ftruncate(fd.get(), size) != 0) {
+    PLOG(ERROR) << "Could not truncate file to size: " << size;
+    return false;
+  }
+  return true;
+}
+
+bool FileMapping::MSync() const {
+  if (!IsValid()) {
+    return false;
+  }
+  if (::msync(handle_.mapping, handle_.size, MS_SYNC) != 0) {
+    PLOG(ERROR) << "Could not msync.";
+    return false;
+  }
+  return true;
+}
+
+bool Rename(const std::filesystem::path& from_path,
+            const std::filesystem::path& to_path,
+            const UniqueFD* from_dir_fd,
+            const UniqueFD* to_dir_fd) {
+  if (::renameat(from_dir_fd == nullptr ? AT_FDCWD : from_dir_fd->get(),
+                 from_path.c_str(),
+                 to_dir_fd == nullptr ? AT_FDCWD : to_dir_fd->get(),
+                 to_path.c_str()) != 0) {
+    PLOG(ERROR) << "Could not perform a file rename.";
+    return false;
   }
   return true;
 }

@@ -48,4 +48,40 @@ bool Package::RegisterFilesInDirectory(const std::filesystem::path& path,
   return true;
 }
 
+bool Package::WriteRegisteredFilesToDirectory(
+    const std::filesystem::path& root_path,
+    const UniqueFD* base_directory) const {
+  auto files = database_.GetRegisteredFiles();
+  if (!files.has_value()) {
+    return false;
+  }
+  for (const auto& file : files.value()) {
+    // Create the intermediate directories if they don't already exist.
+    const auto path = root_path / std::filesystem::path{file.first};
+    if (path.has_parent_path()) {
+      if (!MakeDirectories(path.parent_path(), base_directory)) {
+        LOG(ERROR) << "Could not make make directories: " << path.parent_path();
+        return false;
+      }
+    }
+
+    Database::ContentMapping content_mapping_callback =
+        [path, base_directory](const uint8_t* compressed_data,
+                               uint64_t compressed_data_length) {
+          return DecompressMapping(compressed_data,         //
+                                   compressed_data_length,  //
+                                   path,                    //
+                                   base_directory           //
+          );
+        };
+    if (!database_.ReadContentMapping(
+            file.second,              // content hash
+            content_mapping_callback  // content mapping callback
+            )) {
+      LOG(ERROR) << "Could not write decompressed mapping to location.";
+    }
+  }
+  return true;
+}
+
 }  // namespace pack

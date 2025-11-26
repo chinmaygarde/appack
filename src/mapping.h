@@ -66,7 +66,7 @@ struct MappingHandle {
 
   constexpr bool operator==(const MappingHandle& handle) const = default;
 
-  constexpr explicit operator bool() const { return *this == MappingHandle{}; }
+  explicit operator bool() const { return mapping != MAP_FAILED; }
 };
 
 struct UniqueMappingHandleTraits {
@@ -115,6 +115,13 @@ UniqueFD OpenFile(const std::filesystem::path& file_path,
                   Mask<FileFlags> flags,
                   const UniqueFD* base_directory);
 
+bool Truncate(const UniqueFD& fd, uint64_t size);
+
+bool Rename(const std::filesystem::path& from_path,
+            const std::filesystem::path& to_path,
+            const UniqueFD* from_dir_fd,
+            const UniqueFD* to_dir_fd);
+
 std::optional<uint64_t> FileGetSize(const UniqueFD& fd);
 
 bool IsDirectory(const std::filesystem::path& file_path,
@@ -156,6 +163,8 @@ class FileMapping final : public Mapping {
   uint64_t GetSize() const override;
 
   bool IsValid() const;
+
+  bool MSync() const;
 
  private:
   MappingHandle handle_;

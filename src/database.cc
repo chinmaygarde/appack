@@ -204,4 +204,41 @@ Database::GetRegisteredFiles() const {
   return std::nullopt;
 }
 
+bool Database::ReadContentMapping(ContentHash hash,
+                                  ContentMapping callback) const {
+  if (!callback) {
+    LOG(ERROR) << "Callback cannot be null.";
+    return false;
+  }
+
+  auto stmt = CreateStatement(handle_, R"~(
+        SELECT contents FROM appack_file_contents WHERE content_hash = ?;
+      )~");
+  if (!stmt.is_valid()) {
+    LOG(ERROR) << "Invalid statement.";
+    return false;
+  }
+
+  if (::sqlite3_reset(stmt.get()) != SQLITE_OK) {
+    LOG(ERROR) << "Could not reset statement.";
+    return false;
+  }
+
+  if (::sqlite3_bind_blob(stmt.get(), 1, hash.data(), hash.size(),
+                          SQLITE_TRANSIENT) != SQLITE_OK) {
+    LOG(ERROR) << "Could not bind blob.";
+    return false;
+  }
+
+  if (::sqlite3_step(stmt.get()) != SQLITE_ROW) {
+    LOG(ERROR) << "Blob not found that content hash.";
+    return false;
+  }
+
+  auto contents = ::sqlite3_column_blob(stmt.get(), 0);
+  auto contents_length = ::sqlite3_column_bytes(stmt.get(), 0);
+
+  return callback(reinterpret_cast<const uint8_t*>(contents), contents_length);
+}
+
 }  // namespace pack
