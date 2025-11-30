@@ -21,6 +21,8 @@ jobs:
       uses: lukka/run-vcpkg@v11
       env:
         VCPKG_BINARY_SOURCES: default,rw
+    # Cache vcpkg binary sources.
+    # Adapted from https://github.com/lukka/run-vcpkg/issues/251
     - name: Set up binary cache
       uses: actions/cache@v4
       with:
