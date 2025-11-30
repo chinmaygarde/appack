@@ -30,6 +30,15 @@ target_link_libraries(appack
     zstd::libzstd
 )
 
+# CLI
+add_executable(appack_cli
+  cli.cc
+)
+
+target_link_libraries(appack_cli
+  appack
+)
+
 # Configure Fixtures Location
 get_filename_component(TEST_ASSETS_LOCATION ../assets ABSOLUTE)
 configure_file(fixtures_location.h.in fixtures_location.h @ONLY)
