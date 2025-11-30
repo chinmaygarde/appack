@@ -19,7 +19,7 @@ jobs:
     - name: Setup CCache
       uses: hendrikmuhs/ccache-action@v1.2
       with:
-        key: ccache-${{ runner.os }}
+        key: ${{ github.job }}-${{ runner.os }}
     - uses: extractions/setup-just@v3
     - name: Setup VCPKG
       uses: lukka/run-vcpkg@v11
