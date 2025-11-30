@@ -33,6 +33,7 @@ UniqueFD OpenFile(const std::filesystem::path& file_path,
     base_directory_fd = base_directory->get();
   }
   int oflag = 0;
+  int omode = 0;
   switch (permissions) {
     case FilePermissions::kReadOnly:
       oflag |= O_RDONLY;
@@ -46,6 +47,7 @@ UniqueFD OpenFile(const std::filesystem::path& file_path,
   }
   if (flags & FileFlags::kCreateIfNecessary) {
     oflag |= O_CREAT;
+    omode |= S_IRWXU | S_IRWXG | S_IRWXO;
   }
   if (flags & FileFlags::kTruncateToZero) {
     oflag |= O_TRUNC;
@@ -55,7 +57,7 @@ UniqueFD OpenFile(const std::filesystem::path& file_path,
   }
   oflag |= O_CLOEXEC;
   int fd = PACK_TEMP_FAILURE_RETRY(
-      ::openat(base_directory_fd, file_path.c_str(), oflag));
+      ::openat(base_directory_fd, file_path.c_str(), oflag, omode));
   if (fd == -1) {
     PLOG(ERROR) << "Could not open file " << file_path;
     return {};
