@@ -314,7 +314,7 @@ bool IsDirectory(const std::filesystem::path& file_path,
 static bool MakeDirectory(const std::filesystem::path& file_path,
                           const UniqueFD* base_directory) {
   if (::mkdirat(base_directory == nullptr ? AT_FDCWD : base_directory->get(),
-                file_path.c_str(), S_IRWXU | S_IRWXG | S_IRWXO) != 0) {
+                file_path.c_str(), S_IRWXU) != 0) {
     PLOG(ERROR) << "Could not make directory " << file_path;
     return false;
   }
