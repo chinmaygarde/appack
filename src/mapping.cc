@@ -12,6 +12,15 @@ namespace pack {
 
 Mapping::~Mapping() = default;
 
+class EmptyMapping final : public Mapping {
+ public:
+  EmptyMapping() {}
+
+  virtual uint8_t* GetData() const { return nullptr; }
+
+  virtual uint64_t GetSize() const { return 0; }
+};
+
 uint8_t* FileMapping::GetData() const {
   return reinterpret_cast<uint8_t*>(handle_.mapping);
 }
@@ -84,6 +93,10 @@ std::unique_ptr<FileMapping> FileMapping::Create(
     size_t mapping_offset,
     Mask<MappingProtections> protections,
     MappingModifications mods) {
+  if (mapping_size == 0) {
+    LOG(ERROR) << "Cannot create a zero sized file mapping.";
+    return nullptr;
+  }
   int prot = 0;
   if (protections & MappingProtections::kNone) {
     prot |= PROT_NONE;
@@ -142,7 +155,7 @@ std::unique_ptr<FileMapping> FileMapping::Create(
 
 FileMapping::FileMapping(MappingHandle handle) : handle_(handle) {}
 
-std::unique_ptr<FileMapping> FileMapping::CreateReadOnly(const UniqueFD& fd) {
+std::unique_ptr<Mapping> FileMapping::CreateReadOnly(const UniqueFD& fd) {
   if (!fd.is_valid()) {
     return nullptr;
   }
@@ -150,6 +163,11 @@ std::unique_ptr<FileMapping> FileMapping::CreateReadOnly(const UniqueFD& fd) {
   if (!size.has_value()) {
     return nullptr;
   }
+
+  if (size.value() == 0) {
+    return std::make_unique<EmptyMapping>();
+  }
+
   return Create(fd,                             //
                 size.value(),                   //
                 0,                              //
@@ -158,7 +176,7 @@ std::unique_ptr<FileMapping> FileMapping::CreateReadOnly(const UniqueFD& fd) {
   );
 }
 
-std::unique_ptr<FileMapping> FileMapping::CreateReadOnly(
+std::unique_ptr<Mapping> FileMapping::CreateReadOnly(
     const std::filesystem::path& file_path,
     const UniqueFD* base_directory) {
   return CreateReadOnly(
@@ -371,6 +389,65 @@ bool Rename(const std::filesystem::path& from_path,
                  to_dir_fd == nullptr ? AT_FDCWD : to_dir_fd->get(),
                  to_path.c_str()) != 0) {
     PLOG(ERROR) << "Could not perform a file rename.";
+    return false;
+  }
+  return true;
+}
+
+bool WriteFileAtomically(const std::filesystem::path& path,
+                         const UniqueFD* base_directory,
+                         size_t content_size,
+                         FileWriter writer) {
+  if (!writer) {
+    return false;
+  }
+
+  // If the content size is zero, we won't be able to create the temp file with
+  // a mapping. Just create and truncate the target file directly.
+  if (content_size == 0) {
+    auto target_file =
+        OpenFile(path, FilePermissions::kReadWrite,
+                 FileFlags::kCreateIfNecessary | FileFlags::kTruncateToZero,
+                 base_directory);
+    if (!target_file.is_valid()) {
+      LOG(ERROR) << "Could not create target file.";
+      return false;
+    }
+    return true;
+  }
+
+  auto temp_path = path;
+  temp_path.concat(".appacktmp");
+
+  auto temp_file =
+      OpenFile(temp_path, FilePermissions::kReadWrite,
+               FileFlags::kCreateIfNecessary | FileFlags::kTruncateToZero,
+               base_directory);
+
+  if (!temp_file.is_valid()) {
+    LOG(ERROR) << "Could not create temp file.";
+    return false;
+  }
+  if (!Truncate(temp_file, content_size)) {
+    LOG(ERROR) << "Could not truncate file size.";
+    return false;
+  }
+  auto temp_mapping = FileMapping::Create(
+      temp_file, content_size, 0u,
+      MappingProtections::kRead | MappingProtections::kWrite,
+      MappingModifications::kShared);
+  if (!temp_mapping) {
+    LOG(ERROR) << "Could not create temp mapping.";
+    return false;
+  }
+  if (!writer(temp_mapping->GetData())) {
+    LOG(ERROR) << "Writer could not write to the temporary file.";
+    return false;
+  }
+  if (!temp_mapping->MSync()) {
+    return false;
+  }
+  if (!Rename(temp_path, path, base_directory, base_directory)) {
     return false;
   }
   return true;

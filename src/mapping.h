@@ -141,6 +141,12 @@ bool IterateDirectoryRecursively(DirectoryIterator iterator,
                                  const std::string& dir_name,
                                  const UniqueFD* base_directory = nullptr);
 
+using FileWriter = std::function<bool(uint8_t* mapping)>;
+bool WriteFileAtomically(const std::filesystem::path& path,
+                         const UniqueFD* base_directory,
+                         size_t content_size,
+                         FileWriter writer);
+
 class FileMapping final : public Mapping {
  public:
   static std::unique_ptr<FileMapping> Create(
@@ -150,11 +156,11 @@ class FileMapping final : public Mapping {
       Mask<MappingProtections> protections,
       MappingModifications mods);
 
-  static std::unique_ptr<FileMapping> CreateReadOnly(
+  static std::unique_ptr<Mapping> CreateReadOnly(
       const std::filesystem::path& file_path,
       const UniqueFD* base_directory = nullptr);
 
-  static std::unique_ptr<FileMapping> CreateReadOnly(const UniqueFD& file);
+  static std::unique_ptr<Mapping> CreateReadOnly(const UniqueFD& file);
 
   static std::unique_ptr<FileMapping> CreateAnonymousReadWrite(uint64_t size);
 
