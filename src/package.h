@@ -26,8 +26,17 @@ class Package {
 
   bool IsValid() const;
 
-  bool RegisterFilesInDirectory(const std::filesystem::path& path,
-                                const UniqueFD* base_directory = nullptr);
+  bool RegisterDirectory(const std::filesystem::path& path,
+                         const UniqueFD* base_directory = nullptr);
+
+  bool RegisterFile(const std::filesystem::path& path,
+                    const UniqueFD* base_directory = nullptr);
+
+  bool RegistersPath(const std::filesystem::path& path,
+                     const UniqueFD* base_directory = nullptr);
+
+  bool RegistersPaths(std::vector<std::filesystem::path> paths,
+                      const UniqueFD* base_directory = nullptr);
 
   bool WriteRegisteredFilesToDirectory(
       const std::filesystem::path& root_path,
@@ -36,6 +45,8 @@ class Package {
  private:
   Database database_;
   bool is_valid_ = false;
+
+  bool RegisterNamedPath(const std::string& file_path, const UniqueFD& fd);
 };
 
 }  // namespace pack

@@ -453,4 +453,14 @@ bool WriteFileAtomically(const std::filesystem::path& path,
   return true;
 }
 
+bool PathExists(const std::filesystem::path& path,
+                const UniqueFD* base_directory) {
+  if (::faccessat(base_directory == nullptr ? AT_FDCWD : base_directory->get(),
+                  path.c_str(), F_OK, 0) != 0) {
+    PLOG(ERROR) << "Access check failed";
+    return false;
+  }
+  return true;
+}
+
 }  // namespace pack

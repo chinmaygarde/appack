@@ -19,29 +19,11 @@ bool Package::IsValid() const {
   return is_valid_;
 }
 
-bool Package::RegisterFilesInDirectory(const std::filesystem::path& path,
-                                       const UniqueFD* base_directory) {
+bool Package::RegisterDirectory(const std::filesystem::path& path,
+                                const UniqueFD* base_directory) {
   if (!IterateDirectoryRecursively(
-          [&](const std::string& file_path, const UniqueFD& fd) {
-            const auto mapping = FileMapping::CreateReadOnly(fd);
-            if (!mapping) {
-              LOG(ERROR) << "Could not create file mapping for " << file_path;
-              return false;
-            }
-            const auto hash = GetMappingHash(*mapping);
-            const auto compressed_mapping = CompressMapping(*mapping);
-            if (!compressed_mapping) {
-              LOG(ERROR) << "Could not compress mapping " << file_path;
-              return false;
-            }
-            if (!database_.RegisterFile(file_path, hash,
-                                        *compressed_mapping.data,
-                                        compressed_mapping.range)) {
-              LOG(ERROR) << "Could not write file hash " << file_path;
-              return false;
-            }
-            return true;
-          },
+          std::bind(&Package::RegisterNamedPath, this, std::placeholders::_1,
+                    std::placeholders::_2),
           path, base_directory)) {
     return false;
   }
@@ -81,6 +63,65 @@ bool Package::WriteRegisteredFilesToDirectory(
       LOG(ERROR) << "Could not write decompressed mapping to location.";
     }
   }
+  return true;
+}
+
+bool Package::RegistersPath(const std::filesystem::path& path,
+                            const UniqueFD* base_directory) {
+  if (IsDirectory(path, base_directory)) {
+    return RegisterDirectory(path, base_directory);
+  }
+  return RegisterFile(path, base_directory);
+}
+
+bool Package::RegisterFile(const std::filesystem::path& path,
+                           const UniqueFD* base_directory) {
+  if (!path.has_filename()) {
+    LOG(ERROR) << "Path has no filename.";
+    return false;
+  }
+  return RegisterNamedPath(
+      path.filename().c_str(),
+      OpenFile(path, FilePermissions::kReadOnly, {}, base_directory));
+}
+
+bool Package::RegisterNamedPath(const std::string& file_path,
+                                const UniqueFD& fd) {
+  const auto mapping = FileMapping::CreateReadOnly(fd);
+  if (!mapping) {
+    LOG(ERROR) << "Could not create file mapping for " << file_path;
+    return false;
+  }
+  const auto hash = GetMappingHash(*mapping);
+  const auto compressed_mapping = CompressMapping(*mapping);
+  if (!compressed_mapping) {
+    LOG(ERROR) << "Could not compress mapping " << file_path;
+    return false;
+  }
+  if (!database_.RegisterFile(file_path, hash, *compressed_mapping.data,
+                              compressed_mapping.range)) {
+    LOG(ERROR) << "Could not write file hash " << file_path;
+    return false;
+  }
+  return true;
+}
+
+bool Package::RegistersPaths(std::vector<std::filesystem::path> paths,
+                             const UniqueFD* base_directory) {
+  for (const auto& path : paths) {
+    if (!PathExists(path, base_directory)) {
+      LOG(ERROR) << "Path does not exist: " << path;
+      return false;
+    }
+  }
+
+  for (const auto& path : paths) {
+    if (!RegistersPath(path, base_directory)) {
+      LOG(ERROR) << "Could not register path: " << path;
+      return false;
+    }
+  }
+
   return true;
 }
 

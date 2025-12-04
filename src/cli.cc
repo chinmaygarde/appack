@@ -2,8 +2,22 @@
 
 #include <args.hxx>
 #include <cstdlib>
+#include "package.h"
 
-namespace appack {
+namespace pack {
+
+static bool PackageAddPaths(std::filesystem::path package_path,
+                            std::vector<std::string> path_strings) {
+  Package package(package_path);
+  if (!package.IsValid()) {
+    return false;
+  }
+  std::vector<std::filesystem::path> paths;
+  for (const auto& path_string : path_strings) {
+    paths.emplace_back(path_string);
+  }
+  return package.RegistersPaths(paths);
+}
 
 bool Main(int argc, char const* argv[]) {
   auto appack = args::ArgumentParser{"Manage packages."};
@@ -29,15 +43,17 @@ bool Main(int argc, char const* argv[]) {
     return false;
   }
   if (add && package_for_add && files_and_dirs_to_add) {
-    std::cout << "Adding packaging.";
+    if (!PackageAddPaths(package_for_add.Get(), files_and_dirs_to_add.Get())) {
+      std::cerr << "Could not add paths.";
+    }
     return true;
   }
   std::cerr << appack.Help() << std::endl;
   return false;
 }
 
-}  // namespace appack
+}  // namespace pack
 
 int main(int argc, char const* argv[]) {
-  return appack::Main(argc, argv) ? EXIT_SUCCESS : EXIT_FAILURE;
+  return pack::Main(argc, argv) ? EXIT_SUCCESS : EXIT_FAILURE;
 }

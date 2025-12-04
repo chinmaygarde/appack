@@ -38,7 +38,7 @@ TEST_F(Appack, CanHashContents) {
 TEST_F(Appack, CanCreatePackageAndDecompress) {
   Package package(GetTempDirPath() + "/database.appack");
   ASSERT_TRUE(package.IsValid());
-  ASSERT_TRUE(package.RegisterFilesInDirectory(TEST_ASSETS_LOCATION));
+  ASSERT_TRUE(package.RegisterDirectory(TEST_ASSETS_LOCATION));
   ASSERT_TRUE(package.WriteRegisteredFilesToDirectory(GetTempDirPath() +
                                                       "/decompressed"));
 }

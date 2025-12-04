@@ -147,6 +147,9 @@ bool WriteFileAtomically(const std::filesystem::path& path,
                          size_t content_size,
                          FileWriter writer);
 
+bool PathExists(const std::filesystem::path& path,
+                const UniqueFD* base_directory = nullptr);
+
 class FileMapping final : public Mapping {
  public:
   static std::unique_ptr<FileMapping> Create(
