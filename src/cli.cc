@@ -6,28 +6,34 @@
 namespace appack {
 
 bool Main(int argc, char const* argv[]) {
-  auto parser = args::ArgumentParser{"Manage packages."};
-  args::HelpFlag help(parser, "help", "Display help menu", {'h', "help"});
+  auto appack = args::ArgumentParser{"Manage packages."};
 
-  // Work on assets.
-  args::Command assets(parser, "assets", "Manage assets in the package.");
-  args::Command add(assets, "add", "Add files and directories to the package.");
-  args::Command list(assets, "list", "List the assets in the package.");
-  args::Command clear(assets, "clear", "Clear all assets in the package.");
+  auto help =
+      args::HelpFlag{appack, "help", "Print this help string.", {'h', "help"}};
 
-  // Installation.
-  args::Command install(parser, "install", "Install the package.");
+  // Adding a package.
+  auto add =
+      args::Command{appack, "add", "Add files or directories to the package."};
+  auto package_for_add = args::ValueFlag<std::string>{
+      add,
+      "package",
+      "The package to add files and directories to.",
+      {'p', "package"}};
+  auto files_and_dirs_to_add = args::PositionalList<std::string>{
+      add, "files_and_dirs", "Files and directories to add to the package."};
 
-  if (!parser.ParseCLI(argc, argv)) {
-    std::cerr << "Invalid arguments." << std::endl
-              << parser.Help() << std::endl;
+  if (!appack.ParseCLI(argc, argv)) {
+    std::cerr << "Could not parse argument." << std::endl;
+    std::cerr << appack.GetErrorMsg() << std::endl;
+    std::cerr << appack.Help() << std::endl;
     return false;
   }
-  if (help) {
-    std::cout << parser.Help() << std::endl;
+  if (add && package_for_add && files_and_dirs_to_add) {
+    std::cout << "Adding packaging.";
     return true;
   }
-  return true;
+  std::cerr << appack.Help() << std::endl;
+  return false;
 }
 
 }  // namespace appack
