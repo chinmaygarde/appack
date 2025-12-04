@@ -16,7 +16,7 @@ static bool PackageAddPaths(std::filesystem::path package_path,
   for (const auto& path_string : path_strings) {
     paths.emplace_back(path_string);
   }
-  return package.RegistersPaths(paths);
+  return package.RegisterPaths(paths);
 }
 
 bool Main(int argc, char const* argv[]) {

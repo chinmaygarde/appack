@@ -66,8 +66,8 @@ bool Package::WriteRegisteredFilesToDirectory(
   return true;
 }
 
-bool Package::RegistersPath(const std::filesystem::path& path,
-                            const UniqueFD* base_directory) {
+bool Package::RegisterPath(const std::filesystem::path& path,
+                           const UniqueFD* base_directory) {
   if (IsDirectory(path, base_directory)) {
     return RegisterDirectory(path, base_directory);
   }
@@ -106,8 +106,8 @@ bool Package::RegisterNamedPath(const std::string& file_path,
   return true;
 }
 
-bool Package::RegistersPaths(std::vector<std::filesystem::path> paths,
-                             const UniqueFD* base_directory) {
+bool Package::RegisterPaths(std::vector<std::filesystem::path> paths,
+                            const UniqueFD* base_directory) {
   for (const auto& path : paths) {
     if (!PathExists(path, base_directory)) {
       LOG(ERROR) << "Path does not exist: " << path;
@@ -116,7 +116,7 @@ bool Package::RegistersPaths(std::vector<std::filesystem::path> paths,
   }
 
   for (const auto& path : paths) {
-    if (!RegistersPath(path, base_directory)) {
+    if (!RegisterPath(path, base_directory)) {
       LOG(ERROR) << "Could not register path: " << path;
       return false;
     }
