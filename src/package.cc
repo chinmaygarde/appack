@@ -3,6 +3,7 @@
 #include <absl/log/log.h>
 
 #include "compressor.h"
+#include "hasher.h"
 
 namespace pack {
 
@@ -123,6 +124,20 @@ bool Package::RegisterPaths(std::vector<std::filesystem::path> paths,
   }
 
   return true;
+}
+
+std::optional<std::vector<std::pair<std::string, std::string>>>
+Package::ListFiles() const {
+  auto list = database_.GetRegisteredFiles();
+  if (!list.has_value()) {
+    return std::nullopt;
+  }
+  std::vector<std::pair<std::string, std::string>> results;
+  results.reserve(list.value().size());
+  for (const auto& item : list.value()) {
+    results.emplace_back(std::make_pair(item.first, ToString(item.second)));
+  }
+  return results;
 }
 
 }  // namespace pack

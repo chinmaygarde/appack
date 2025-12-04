@@ -36,6 +36,9 @@ class Package {
       const std::filesystem::path& root_path,
       const UniqueFD* base_directory = nullptr) const;
 
+  std::optional<std::vector<std::pair<std::string, std::string>>> ListFiles()
+      const;
+
  private:
   Database database_;
   bool is_valid_ = false;

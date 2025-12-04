@@ -18,10 +18,11 @@ TEST_F(Appack, CanCreateMapping) {
 }
 
 TEST_F(Appack, CanParseHashFromString) {
-  ASSERT_TRUE(
-      ParseFromHexString(
-          "0eedeb0be9888022d3f92a799eb56d160a911a997d6b0ef0e504865da422a3fd")
-          .has_value());
+  const auto hash = ParseFromHexString(
+      "0eedeb0be9888022d3f92a799eb56d160a911a997d6b0ef0e504865da422a3fd");
+  ASSERT_TRUE(hash.has_value());
+  ASSERT_EQ(ToString(hash.value()),
+            "0eedeb0be9888022d3f92a799eb56d160a911a997d6b0ef0e504865da422a3fd");
 }
 
 TEST_F(Appack, CanHashContents) {

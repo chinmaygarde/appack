@@ -1,6 +1,7 @@
 #include "hasher.h"
 
 #include <blake3.h>
+#include <sstream>
 
 namespace pack {
 
@@ -23,6 +24,15 @@ std::optional<ContentHash> ParseFromHexString(const std::string_view& str) {
     hash[i] = std::stoi(std::string{str.substr(i * 2, 2)}, nullptr, 16);
   }
   return hash;
+}
+
+std::string ToString(const ContentHash& hash) {
+  std::ostringstream stream;
+  stream << std::hex << std::setfill('0');
+  for (uint8_t b : hash) {
+    stream << std::setw(2) << static_cast<int>(b);
+  }
+  return stream.str();
 }
 
 }  // namespace pack
