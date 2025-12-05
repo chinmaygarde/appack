@@ -2,7 +2,7 @@
   "build_systems": [
     {
       "name": "App Pack Build All",
-      "shell_cmd": "just && just test && build/src/appack_cli list -p /Users/saturn/Desktop/package.appack",
+      "shell_cmd": "just && just test && build/src/appack_cli install -p /Users/saturn/Desktop/package.appack /Users/saturn/Desktop/installed",
       "working_dir": "${project_path}",
       "file_regex": "(.*):(\\d+):(\\d+)(.*)",
       "shell": true,

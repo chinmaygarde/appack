@@ -4,8 +4,8 @@
 
 #include <absl/container/flat_hash_map.h>
 #include <absl/log/log.h>
+
 #include "database.h"
-#include "hasher.h"
 #include "mapping.h"
 
 namespace pack {
@@ -32,9 +32,8 @@ class Package {
   bool RegisterPaths(std::vector<std::filesystem::path> paths,
                      const UniqueFD* base_directory = nullptr);
 
-  bool WriteRegisteredFilesToDirectory(
-      const std::filesystem::path& root_path,
-      const UniqueFD* base_directory = nullptr) const;
+  bool InstallEmbeddedFiles(const std::filesystem::path& root_path,
+                            const UniqueFD* base_directory = nullptr) const;
 
   std::optional<std::vector<std::pair<std::string, std::string>>> ListFiles()
       const;

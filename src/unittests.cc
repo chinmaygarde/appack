@@ -40,8 +40,7 @@ TEST_F(Appack, CanCreatePackageAndDecompress) {
   Package package(GetTempDirPath() + "/database.appack");
   ASSERT_TRUE(package.IsValid());
   ASSERT_TRUE(package.RegisterPath(TEST_ASSETS_LOCATION));
-  ASSERT_TRUE(package.WriteRegisteredFilesToDirectory(GetTempDirPath() +
-                                                      "/decompressed"));
+  ASSERT_TRUE(package.InstallEmbeddedFiles(GetTempDirPath() + "/decompressed"));
 }
 
 }  // namespace pack::testing

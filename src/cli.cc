@@ -34,6 +34,18 @@ static bool ListFiles(std::filesystem::path package_path) {
   return true;
 }
 
+static bool InstallPackage(std::filesystem::path package_path,
+                           std::filesystem::path location) {
+  Package package(package_path);
+  if (!package.IsValid()) {
+    return false;
+  }
+  if (!package.InstallEmbeddedFiles(location)) {
+    return false;
+  }
+  return true;
+}
+
 bool Main(int argc, char const* argv[]) {
   auto appack = args::ArgumentParser{"Manage packages."};
 
@@ -56,6 +68,14 @@ bool Main(int argc, char const* argv[]) {
   auto package_for_list = args::ValueFlag<std::string>{
       list, "package", "The package to list the files of.", {'p', "package"}};
 
+  // Install package.
+  auto install = args::Command{appack, "install",
+                               "Install package at the specified location."};
+  auto package_for_install = args::ValueFlag<std::string>(
+      install, "package", "The package to install.", {'p', "package"});
+  auto location_for_install = args::Positional<std::string>{
+      install, "location", "The location to install the package to."};
+
   if (!appack.ParseCLI(argc, argv)) {
     std::cerr << "Could not parse argument." << std::endl;
     std::cerr << appack.GetErrorMsg() << std::endl;
@@ -71,7 +91,15 @@ bool Main(int argc, char const* argv[]) {
   }
   if (list && package_for_list) {
     if (!ListFiles(package_for_list.Get())) {
-      std::cerr << "Could not list files.";
+      std::cerr << "Could not list files." << std::endl;
+      return false;
+    }
+    return true;
+  }
+  if (install && package_for_install && location_for_install) {
+    if (!InstallPackage(package_for_install.Get(),
+                        location_for_install.Get())) {
+      std::cerr << "Could not install package." << std::endl;
       return false;
     }
     return true;

@@ -31,9 +31,8 @@ bool Package::RegisterDirectory(const std::filesystem::path& path,
   return true;
 }
 
-bool Package::WriteRegisteredFilesToDirectory(
-    const std::filesystem::path& root_path,
-    const UniqueFD* base_directory) const {
+bool Package::InstallEmbeddedFiles(const std::filesystem::path& root_path,
+                                   const UniqueFD* base_directory) const {
   auto files = database_.GetRegisteredFiles();
   if (!files.has_value()) {
     return false;
