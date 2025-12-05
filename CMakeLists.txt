@@ -13,6 +13,8 @@ EnableCCache()
 
 project(appack)
 
+AddRecommendedWarningFlags()
+
 enable_testing()
 
 include(GoogleTest)
