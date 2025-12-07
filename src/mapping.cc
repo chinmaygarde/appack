@@ -492,7 +492,7 @@ bool WriteFileAtomically(const std::filesystem::path& path,
 bool PathExists(const std::filesystem::path& path,
                 const UniqueFD* base_directory) {
   if (::faccessat(base_directory == nullptr ? AT_FDCWD : base_directory->get(),
-                  path.c_str(), F_OK, 0) != 0) {
+                  path.c_str(), F_OK, AT_SYMLINK_NOFOLLOW) != 0) {
     PLOG(ERROR) << "Access check failed";
     return false;
   }
@@ -557,14 +557,10 @@ bool MakeSymlink(const std::filesystem::path& from,
 
 bool RemovePathIfExists(const std::filesystem::path& path,
                         const UniqueFD* base_directory) {
-  const auto base_dir_fd =
-      base_directory == nullptr ? AT_FDCWD : base_directory->get();
-
-  if (::faccessat(base_dir_fd, path.c_str(), F_OK, AT_SYMLINK_NOFOLLOW) != 0) {
-    // Path does not exist. Nothing to do.
+  if (!PathExists(path, base_directory)) {
+    // Path doesn't exist. Nothing to do.
     return true;
   }
-
   return RemovePath(path, base_directory);
 }
 
