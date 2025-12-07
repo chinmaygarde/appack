@@ -42,7 +42,10 @@ class Package {
   Database database_;
   bool is_valid_ = false;
 
-  bool RegisterNamedPath(const std::string& file_path, const UniqueFD& fd);
+  bool RegisterNamedFilePath(const std::string& file_path, const UniqueFD& fd);
+
+  bool RegisterNamedFileLink(const std::string& file_path,
+                             const std::filesystem::path& path);
 
   bool RegisterDirectory(const std::filesystem::path& path,
                          const UniqueFD* base_directory = nullptr);

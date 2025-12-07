@@ -23,8 +23,10 @@ bool Package::IsValid() const {
 bool Package::RegisterDirectory(const std::filesystem::path& path,
                                 const UniqueFD* base_directory) {
   if (!IterateDirectoryRecursively(
-          std::bind(&Package::RegisterNamedPath, this, std::placeholders::_1,
-                    std::placeholders::_2),
+          std::bind(&Package::RegisterNamedFilePath, this,
+                    std::placeholders::_1, std::placeholders::_2),
+          std::bind(&Package::RegisterNamedFileLink, this,
+                    std::placeholders::_1, std::placeholders::_2),
           path, base_directory)) {
     return false;
   }
@@ -80,13 +82,13 @@ bool Package::RegisterFile(const std::filesystem::path& path,
     LOG(ERROR) << "Path has no filename.";
     return false;
   }
-  return RegisterNamedPath(
+  return RegisterNamedFilePath(
       path.filename().c_str(),
       OpenFile(path, FilePermissions::kReadOnly, {}, base_directory));
 }
 
-bool Package::RegisterNamedPath(const std::string& file_path,
-                                const UniqueFD& fd) {
+bool Package::RegisterNamedFilePath(const std::string& file_path,
+                                    const UniqueFD& fd) {
   const auto mapping = FileMapping::CreateReadOnly(fd);
   if (!mapping) {
     LOG(ERROR) << "Could not create file mapping for " << file_path;
@@ -137,6 +139,11 @@ Package::ListFiles() const {
     results.emplace_back(std::make_pair(item.first, ToString(item.second)));
   }
   return results;
+}
+
+bool Package::RegisterNamedFileLink(const std::string& file_path,
+                                    const std::filesystem::path& path) {
+  return true;
 }
 
 }  // namespace pack

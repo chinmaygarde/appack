@@ -2,7 +2,9 @@
 
 #include <dirent.h>
 #include <sys/stat.h>
+#include <filesystem>
 
+#include <absl/cleanup/cleanup.h>
 #include <absl/log/check.h>
 #include <absl/log/log.h>
 #include <sys/mman.h>
@@ -255,11 +257,47 @@ bool RemoveDirectory(const std::string& dir_name,
   return true;
 }
 
-static bool IterateDirectoryRecursively(DirectoryIterator iterator,
+static std::optional<std::string> ReadLink(const std::string& link_name,
+                                           const UniqueFD* base_directory) {
+  const auto dirfd =
+      base_directory == nullptr ? AT_FDCWD : base_directory->get();
+  struct stat statbuf = {};
+  if (::fstatat(dirfd, link_name.c_str(), &statbuf, AT_SYMLINK_NOFOLLOW) != 0) {
+    PLOG(ERROR) << "Could not stat link path.";
+    return std::nullopt;
+  }
+
+  if (!S_ISLNK(statbuf.st_mode)) {
+    LOG(ERROR) << "Path is not a link: " << link_name << ". Mode: " << std::hex
+               << statbuf.st_mode;
+    return std::nullopt;
+  }
+
+  char* link_path_bytes =
+      reinterpret_cast<char*>(::calloc(statbuf.st_size, sizeof(char)));
+  if (link_path_bytes == nullptr) {
+    LOG(ERROR) << "Could not allocate bytes for link path.";
+    return std::nullopt;
+  }
+  absl::Cleanup free_link_path_bytes = [link_path_bytes]() {
+    ::free(link_path_bytes);
+  };
+  const auto bytes_read =
+      readlinkat(dirfd, link_name.data(), link_path_bytes, statbuf.st_size);
+  if (bytes_read != statbuf.st_size) {
+    LOG(ERROR) << std::format("Unexpected size of link. Expected {}, got {}.",
+                              statbuf.st_size, bytes_read);
+    return std::nullopt;
+  }
+  return std::string{link_path_bytes, static_cast<size_t>(statbuf.st_size)};
+}
+
+static bool IterateDirectoryRecursively(FileIterator file_iterator,
+                                        LinkIterator link_iterator,
                                         const std::string& dir_name,
                                         const UniqueFD* base_directory,
                                         std::string file_path) {
-  if (!iterator) {
+  if (!file_iterator || !link_iterator) {
     return false;
   }
   auto dir_fd =
@@ -284,32 +322,51 @@ static bool IterateDirectoryRecursively(DirectoryIterator iterator,
     const auto subfile_name = std::string{dirent->d_name};
     const auto subfile_path =
         file_path.empty() ? subfile_name : file_path + "/" + subfile_name;
-    if (dirent->d_type == DT_DIR) {
-      // Recursively iterator into the directory.
-      if (!IterateDirectoryRecursively(iterator, subfile_name, &dir_fd,
-                                       subfile_path)) {
-        return false;
-      }
-    } else if (dirent->d_type == DT_REG || dirent->d_type == DT_LNK) {
-      // Invoke the iterator.
-      auto subfile_fd =
-          OpenFile(subfile_name, FilePermissions::kReadOnly, {}, &dir_fd);
-      if (!subfile_fd.is_valid()) {
-        PLOG(ERROR) << "Could not open file " << subfile_name;
-        return false;
-      }
-      if (!iterator(subfile_path, subfile_fd)) {
-        return false;
-      }
+    switch (dirent->d_type) {
+      case DT_DIR:
+        // Recursively iterator into the directory.
+        if (!IterateDirectoryRecursively(file_iterator, link_iterator,
+                                         subfile_name, &dir_fd, subfile_path)) {
+          return false;
+        }
+        break;
+      case DT_REG:
+        // Open the file and invoke the iterator.
+        {
+          auto subfile_fd =
+              OpenFile(subfile_name, FilePermissions::kReadOnly, {}, &dir_fd);
+          if (!subfile_fd.is_valid()) {
+            PLOG(ERROR) << "Could not open file " << subfile_name;
+            return false;
+          }
+          if (!file_iterator(subfile_path, subfile_fd)) {
+            return false;
+          }
+        }
+        break;
+      case DT_LNK: {
+        auto link_path = ReadLink(subfile_name, &dir_fd);
+        if (!link_path.has_value()) {
+          LOG(ERROR) << "Could not read link path.";
+          return false;
+        }
+        if (!link_iterator(subfile_path, link_path.value())) {
+          return false;
+        }
+      } break;
+      default:
+        break;
     }
   }
   return true;
 }
 
-bool IterateDirectoryRecursively(DirectoryIterator iterator,
+bool IterateDirectoryRecursively(FileIterator file_iterator,
+                                 LinkIterator link_iterator,
                                  const std::string& dir_name,
                                  const UniqueFD* base_directory) {
-  return IterateDirectoryRecursively(iterator, dir_name, base_directory, "");
+  return IterateDirectoryRecursively(file_iterator, link_iterator, dir_name,
+                                     base_directory, "");
 }
 
 std::unique_ptr<FileMapping> FileMapping::CreateAnonymousReadWrite(

@@ -135,9 +135,12 @@ std::optional<std::string> CreateTemporaryDirectory();
 bool RemoveDirectory(const std::string& dir_name,
                      const UniqueFD* base_directory = nullptr);
 
-using DirectoryIterator =
+using FileIterator =
     std::function<bool(const std::string& file_path, const UniqueFD& fd)>;
-bool IterateDirectoryRecursively(DirectoryIterator iterator,
+using LinkIterator = std::function<bool(const std::string& file_path,
+                                        const std::filesystem::path& path)>;
+bool IterateDirectoryRecursively(FileIterator file_iterator,
+                                 LinkIterator link_iterator,
                                  const std::string& dir_name,
                                  const UniqueFD* base_directory = nullptr);
 
