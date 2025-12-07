@@ -6,6 +6,7 @@
 #include <filesystem>
 #include <functional>
 #include <tuple>
+#include <variant>
 
 #include "hasher.h"
 #include "unique_object.h"
@@ -58,7 +59,14 @@ class Database final {
                     const Mapping& mapping,
                     const Range& src_range);
 
-  std::optional<std::vector<std::pair<std::string, ContentHash>>>
+  bool RegisterSymlink(std::string file_path, std::string symlink_path);
+
+  struct RegisteredFile {
+    // Either the hash of the file contents of the symlink path.
+    std::variant<ContentHash, std::string> contents;
+  };
+
+  std::optional<std::vector<std::pair<std::string, RegisteredFile>>>
   GetRegisteredFiles() const;
 
   using ContentMapping =
@@ -72,6 +80,8 @@ class Database final {
   StatementHandle rollback_stmt_;
   StatementHandle hash_stmt_;
   StatementHandle content_stmt_;
+  StatementHandle insert_symlink_stmt_;
+  StatementHandle read_files_stmt_;
   bool is_valid_ = false;
 };
 

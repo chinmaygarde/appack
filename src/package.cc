@@ -58,11 +58,21 @@ bool Package::InstallEmbeddedFiles(const std::filesystem::path& root_path,
                                    base_directory           //
           );
         };
-    if (!database_.ReadContentMapping(
-            file.second,              // content hash
-            content_mapping_callback  // content mapping callback
-            )) {
-      LOG(ERROR) << "Could not write decompressed mapping to location.";
+
+    if (std::holds_alternative<ContentHash>(file.second.contents)) {
+      if (!database_.ReadContentMapping(
+              std::get<ContentHash>(file.second.contents),  // content hash
+              content_mapping_callback  // content mapping callback
+              )) {
+        LOG(ERROR) << "Could not write decompressed mapping to location.";
+        return false;
+      }
+    } else if (std::holds_alternative<std::string>(file.second.contents)) {
+      const auto& symlink_path = std::get<std::string>(file.second.contents);
+      if (!MakeSymlink(path, symlink_path, base_directory)) {
+        LOG(ERROR) << "Could not create symlink.";
+        return false;
+      }
     }
   }
   return true;
@@ -136,13 +146,20 @@ Package::ListFiles() const {
   std::vector<std::pair<std::string, std::string>> results;
   results.reserve(list.value().size());
   for (const auto& item : list.value()) {
-    results.emplace_back(std::make_pair(item.first, ToString(item.second)));
+    if (std::holds_alternative<ContentHash>(item.second.contents)) {
+      results.emplace_back(std::make_pair(
+          item.first, ToString(std::get<ContentHash>(item.second.contents))));
+    }
   }
   return results;
 }
 
 bool Package::RegisterNamedFileLink(const std::string& file_path,
                                     const std::filesystem::path& path) {
+  if (!database_.RegisterSymlink(file_path, path.string())) {
+    LOG(ERROR) << "Could not register symlink: " << file_path;
+    return false;
+  }
   return true;
 }
 

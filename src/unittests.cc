@@ -40,7 +40,22 @@ TEST_F(Appack, CanCreatePackageAndDecompress) {
   Package package(GetTempDirPath() + "/database.appack");
   ASSERT_TRUE(package.IsValid());
   ASSERT_TRUE(package.RegisterPath(TEST_ASSETS_LOCATION));
-  ASSERT_TRUE(package.InstallEmbeddedFiles(GetTempDirPath() + "/decompressed"));
+  const std::string install_path = GetTempDirPath() + "/decompressed";
+  ASSERT_TRUE(package.InstallEmbeddedFiles(install_path));
+  ASSERT_TRUE(PathExists(install_path + "/airplane.jpg"));
+  ASSERT_TRUE(PathExists(install_path + "/somefolder2/airlink.jpg"));
+  ASSERT_TRUE(PathExists(install_path + "/0/1/2/3/4/5/6/7/airplane.jpg"));
+  ASSERT_TRUE(PathExists(install_path + "/a/b/c/d/e/f/g/airplane.jpg"));
+}
+
+TEST_F(Appack, CanDecompressOverExistingInstallation) {
+  Package package(GetTempDirPath() + "/database.appack");
+  ASSERT_TRUE(package.IsValid());
+  ASSERT_TRUE(package.RegisterPath(TEST_ASSETS_LOCATION));
+  const std::string install_path = GetTempDirPath() + "/decompressed";
+  ASSERT_TRUE(package.InstallEmbeddedFiles(install_path));
+  ASSERT_TRUE(package.InstallEmbeddedFiles(install_path));
+  ASSERT_TRUE(package.InstallEmbeddedFiles(install_path));
 }
 
 }  // namespace pack::testing

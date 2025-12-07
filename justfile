@@ -2,7 +2,7 @@ build preset='debug':
 	@cmake --build --preset {{preset}}
 
 test preset='debug':
-	@ctest --preset {{preset}} --output-on-failure --stop-on-failure
+	@ctest --preset {{preset}} --output-on-failure --stop-on-failure --debug
 
 alias gen := setup
 

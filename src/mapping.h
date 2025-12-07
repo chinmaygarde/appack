@@ -127,13 +127,29 @@ std::optional<uint64_t> FileGetSize(const UniqueFD& fd);
 bool IsDirectory(const std::filesystem::path& file_path,
                  const UniqueFD* base_directory = nullptr);
 
+bool IsLink(const std::filesystem::path& file_path,
+            const UniqueFD* base_directory = nullptr);
+
+bool IsRegularFile(const std::filesystem::path& file_path,
+                   const UniqueFD* base_directory = nullptr);
+
 bool MakeDirectories(const std::filesystem::path& file_path,
                      const UniqueFD* base_directory = nullptr);
+
+bool MakeSymlink(const std::filesystem::path& from,
+                 const std::string& to,
+                 const UniqueFD* base_directory = nullptr);
 
 std::optional<std::string> CreateTemporaryDirectory();
 
 bool RemoveDirectory(const std::string& dir_name,
                      const UniqueFD* base_directory = nullptr);
+
+bool RemovePathIfExists(const std::filesystem::path& path,
+                        const UniqueFD* base_directory = nullptr);
+
+bool RemovePath(const std::filesystem::path& path,
+                const UniqueFD* base_directory = nullptr);
 
 using FileIterator =
     std::function<bool(const std::string& file_path, const UniqueFD& fd)>;

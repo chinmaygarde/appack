@@ -234,24 +234,13 @@ bool RemoveDirectory(const std::string& dir_name,
         return false;
       }
     } else {
-      // Unlink the file.
-      bool unlink_success = ::unlinkat(dir_fd.get(),         //
-                                       subdir_name.c_str(),  //
-                                       0                     //
-                                       ) == 0;
-      if (!unlink_success) {
-        PLOG(ERROR) << "Could not remove the file " << subdir_name;
+      // Remove the file.
+      if (!RemovePath(subdir_name, &dir_fd)) {
         return false;
       }
     }
   }
-  bool unlink_success =
-      ::unlinkat(base_directory ? base_directory->get() : AT_FDCWD,  //
-                 dir_name.c_str(),                                   //
-                 AT_REMOVEDIR                                        //
-                 ) == 0;
-  if (!unlink_success) {
-    PLOG(ERROR) << "Could not remove the directory";
+  if (!RemovePath(dir_name, base_directory)) {
     return false;
   }
   return true;
@@ -374,16 +363,6 @@ std::unique_ptr<FileMapping> FileMapping::CreateAnonymousReadWrite(
   return Create(std::nullopt, size, 0u,
                 MappingProtections::kRead | MappingProtections::kWrite,
                 MappingModifications::kPrivate);
-}
-
-bool IsDirectory(const std::filesystem::path& file_path,
-                 const UniqueFD* base_directory) {
-  struct stat statbuf = {};
-  if (::fstatat(base_directory == nullptr ? AT_FDCWD : base_directory->get(),
-                file_path.c_str(), &statbuf, 0) != 0) {
-    return false;
-  }
-  return S_ISDIR(statbuf.st_mode);
 }
 
 static bool MakeDirectory(const std::filesystem::path& file_path,
@@ -515,6 +494,99 @@ bool PathExists(const std::filesystem::path& path,
   if (::faccessat(base_directory == nullptr ? AT_FDCWD : base_directory->get(),
                   path.c_str(), F_OK, 0) != 0) {
     PLOG(ERROR) << "Access check failed";
+    return false;
+  }
+  return true;
+}
+
+enum class FileType {
+  kRegularFile,
+  kDirectory,
+  kSymbolicLink,
+};
+
+static bool IsFileOfType(const std::filesystem::path& file_path,
+                         const UniqueFD* base_directory,
+                         FileType type) {
+  struct stat statbuf = {};
+  if (::fstatat(base_directory == nullptr ? AT_FDCWD : base_directory->get(),
+                file_path.c_str(), &statbuf, 0) != 0) {
+    return false;
+  }
+  switch (type) {
+    case FileType::kRegularFile:
+      return S_ISREG(statbuf.st_mode);
+    case FileType::kDirectory:
+      return S_ISDIR(statbuf.st_mode);
+    case FileType::kSymbolicLink:
+      return S_ISLNK(statbuf.st_mode);
+  }
+  return false;
+}
+
+bool IsDirectory(const std::filesystem::path& file_path,
+                 const UniqueFD* base_directory) {
+  return IsFileOfType(file_path, base_directory, FileType::kDirectory);
+}
+
+bool IsLink(const std::filesystem::path& file_path,
+            const UniqueFD* base_directory) {
+  return IsFileOfType(file_path, base_directory, FileType::kSymbolicLink);
+}
+
+bool IsRegularFile(const std::filesystem::path& file_path,
+                   const UniqueFD* base_directory) {
+  return IsFileOfType(file_path, base_directory, FileType::kRegularFile);
+}
+
+bool MakeSymlink(const std::filesystem::path& from,
+                 const std::string& to,
+                 const UniqueFD* base_directory) {
+  const auto base_fd =
+      base_directory == nullptr ? AT_FDCWD : base_directory->get();
+  if (!RemovePathIfExists(from, base_directory)) {
+    LOG(ERROR) << "Could not remove path.";
+    return false;
+  }
+  if (::symlinkat(to.c_str(), base_fd, from.c_str()) != 0) {
+    PLOG(ERROR) << "Could not create symlink " << from << " to " << to << ":";
+    return false;
+  }
+  return true;
+}
+
+bool RemovePathIfExists(const std::filesystem::path& path,
+                        const UniqueFD* base_directory) {
+  const auto base_dir_fd =
+      base_directory == nullptr ? AT_FDCWD : base_directory->get();
+
+  if (::faccessat(base_dir_fd, path.c_str(), F_OK, AT_SYMLINK_NOFOLLOW) != 0) {
+    // Path does not exist. Nothing to do.
+    return true;
+  }
+
+  return RemovePath(path, base_directory);
+}
+
+bool RemovePath(const std::filesystem::path& path,
+                const UniqueFD* base_directory) {
+  const auto base_dir_fd =
+      base_directory == nullptr ? AT_FDCWD : base_directory->get();
+
+  struct stat statbuf = {};
+  if (::fstatat(base_dir_fd, path.c_str(), &statbuf, AT_SYMLINK_NOFOLLOW) !=
+      0) {
+    PLOG(ERROR) << "Could not determine file type: ";
+    return true;
+  }
+
+  int unlink_flags = 0;
+  if (S_ISDIR(statbuf.st_mode)) {
+    unlink_flags |= AT_REMOVEDIR;
+  }
+
+  if (::unlinkat(base_dir_fd, path.c_str(), unlink_flags) != 0) {
+    PLOG(ERROR) << "Could not unlink: ";
     return false;
   }
   return true;
