@@ -290,7 +290,7 @@ static bool IterateDirectoryRecursively(DirectoryIterator iterator,
                                        subfile_path)) {
         return false;
       }
-    } else if (dirent->d_type) {
+    } else if (dirent->d_type == DT_REG || dirent->d_type == DT_LNK) {
       // Invoke the iterator.
       auto subfile_fd =
           OpenFile(subfile_name, FilePermissions::kReadOnly, {}, &dir_fd);
