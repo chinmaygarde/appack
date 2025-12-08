@@ -61,25 +61,27 @@ Database::Database(const std::filesystem::path& location) {
     return;
   }
 
-  begin_stmt_ = CreateStatement(handle_, "BEGIN TRANSACTION;");
-  commit_stmt_ = CreateStatement(handle_, "COMMIT TRANSACTION;");
-  rollback_stmt_ = CreateStatement(handle_, "ROLLBACK TRANSACTION;");
-  hash_stmt_ = CreateStatement(handle_, R"~(
+  begin_transaction_stmt_ = CreateStatement(handle_, "BEGIN TRANSACTION;");
+  commit_transaction_stmt_ = CreateStatement(handle_, "COMMIT TRANSACTION;");
+  rollback_transaction_stmt_ =
+      CreateStatement(handle_, "ROLLBACK TRANSACTION;");
+  insert_file_stmt_ = CreateStatement(handle_, R"~(
     INSERT OR REPLACE INTO appack_files(file_name, content_hash) VALUES (?, ?);
   )~");
   insert_symlink_stmt_ = CreateStatement(handle_, R"~(
     INSERT OR REPLACE INTO appack_files(file_name, symlink_path) VALUES (?, ?);
   )~");
-  content_stmt_ = CreateStatement(handle_, R"~(
+  content_content_stmt_ = CreateStatement(handle_, R"~(
     INSERT OR REPLACE INTO appack_file_contents(content_hash, contents) VALUES (?, ?);
   )~");
-  read_files_stmt_ = CreateStatement(handle_, R"~(
+  read_file_stmt_ = CreateStatement(handle_, R"~(
     SELECT file_name, content_hash, symlink_path FROM appack_files;
   )~");
-  if (!begin_stmt_.is_valid() || !commit_stmt_.is_valid() ||
-      !rollback_stmt_.is_valid() || !hash_stmt_.is_valid() ||
-      !content_stmt_.is_valid() || !insert_symlink_stmt_.is_valid() ||
-      !read_files_stmt_.is_valid()) {
+  if (!begin_transaction_stmt_.is_valid() ||
+      !commit_transaction_stmt_.is_valid() ||
+      !rollback_transaction_stmt_.is_valid() || !insert_file_stmt_.is_valid() ||
+      !content_content_stmt_.is_valid() || !insert_symlink_stmt_.is_valid() ||
+      !read_file_stmt_.is_valid()) {
     return;
   }
 
@@ -96,32 +98,32 @@ bool Database::RegisterFile(std::string file_path,
                             ContentHash hash,
                             const Mapping& src_mapping,
                             const Range& src_range) {
-  if (::sqlite3_step(begin_stmt_.get()) != SQLITE_DONE) {
+  if (::sqlite3_step(begin_transaction_stmt_.get()) != SQLITE_DONE) {
     LOG(ERROR) << "Couldn't begin transaction.";
     return false;
   }
   absl::Cleanup rollback = [&]() {
-    auto result = ::sqlite3_step(rollback_stmt_.get());
+    auto result = ::sqlite3_step(rollback_transaction_stmt_.get());
     DCHECK(result == SQLITE_DONE);
   };
 
   {
     // Register the content hash.
-    if (::sqlite3_reset(hash_stmt_.get()) != SQLITE_OK) {
+    if (::sqlite3_reset(insert_file_stmt_.get()) != SQLITE_OK) {
       LOG(ERROR) << "Couldn't reset statement.";
       return false;
     }
-    if (::sqlite3_bind_text(hash_stmt_.get(), 1, file_path.data(),
+    if (::sqlite3_bind_text(insert_file_stmt_.get(), 1, file_path.data(),
                             file_path.size(), SQLITE_TRANSIENT) != SQLITE_OK) {
       LOG(ERROR) << "Couldn't bind key.";
       return false;
     }
-    if (::sqlite3_bind_blob(hash_stmt_.get(), 2, hash.data(), hash.size(),
-                            SQLITE_TRANSIENT) != SQLITE_OK) {
+    if (::sqlite3_bind_blob(insert_file_stmt_.get(), 2, hash.data(),
+                            hash.size(), SQLITE_TRANSIENT) != SQLITE_OK) {
       LOG(ERROR) << "Couldn't bind value.";
       return false;
     }
-    if (::sqlite3_step(hash_stmt_.get()) != SQLITE_DONE) {
+    if (::sqlite3_step(insert_file_stmt_.get()) != SQLITE_DONE) {
       LOG(ERROR) << "Couldn't execute statement.";
       return false;
     }
@@ -129,30 +131,30 @@ bool Database::RegisterFile(std::string file_path,
 
   {
     // Register the contents.
-    if (::sqlite3_reset(content_stmt_.get()) != SQLITE_OK) {
+    if (::sqlite3_reset(content_content_stmt_.get()) != SQLITE_OK) {
       LOG(ERROR) << "Couldn't reset statement.";
       return false;
     }
-    if (::sqlite3_bind_blob(content_stmt_.get(), 1, hash.data(), hash.size(),
-                            SQLITE_TRANSIENT) != SQLITE_OK) {
+    if (::sqlite3_bind_blob(content_content_stmt_.get(), 1, hash.data(),
+                            hash.size(), SQLITE_TRANSIENT) != SQLITE_OK) {
       LOG(ERROR) << "Couldn't bind key.";
       return false;
     }
     // TODO: This needs to non-transient.
-    if (::sqlite3_bind_blob(content_stmt_.get(), 2,
+    if (::sqlite3_bind_blob(content_content_stmt_.get(), 2,
                             src_mapping.GetData() + src_range.offset,
                             src_range.length, SQLITE_TRANSIENT) != SQLITE_OK) {
       LOG(ERROR) << "Couldn't bind value.";
       return false;
     }
-    if (::sqlite3_step(content_stmt_.get()) != SQLITE_DONE) {
+    if (::sqlite3_step(content_content_stmt_.get()) != SQLITE_DONE) {
       LOG(ERROR) << "Couldn't execute statement..";
       return false;
     }
   }
 
   std::move(rollback).Cancel();
-  if (::sqlite3_step(commit_stmt_.get()) != SQLITE_DONE) {
+  if (::sqlite3_step(commit_transaction_stmt_.get()) != SQLITE_DONE) {
     LOG(ERROR) << "Couldn't commit transaction.";
     return false;
   }
@@ -185,7 +187,7 @@ bool Database::RegisterSymlink(std::string file_path,
 
 std::optional<std::vector<std::pair<std::string, Database::RegisteredFile>>>
 Database::GetRegisteredFiles() const {
-  if (::sqlite3_reset(read_files_stmt_.get()) != SQLITE_OK) {
+  if (::sqlite3_reset(read_file_stmt_.get()) != SQLITE_OK) {
     LOG(ERROR) << "Could not reset statement.";
     return std::nullopt;
   }
@@ -193,21 +195,21 @@ Database::GetRegisteredFiles() const {
   std::vector<std::pair<std::string, Database::RegisteredFile>> results;
 
   while (true) {
-    switch (auto step_result = ::sqlite3_step(read_files_stmt_.get())) {
+    switch (auto step_result = ::sqlite3_step(read_file_stmt_.get())) {
       case SQLITE_DONE:
         return results;
       case SQLITE_ROW: {
         RegisteredFile file;
 
         auto file_name = reinterpret_cast<const char*>(
-            ::sqlite3_column_text(read_files_stmt_.get(), 0u));
-        auto content_hash = ::sqlite3_column_blob(read_files_stmt_.get(), 1u);
+            ::sqlite3_column_text(read_file_stmt_.get(), 0u));
+        auto content_hash = ::sqlite3_column_blob(read_file_stmt_.get(), 1u);
         auto content_hash_length =
-            ::sqlite3_column_bytes(read_files_stmt_.get(), 1u);
+            ::sqlite3_column_bytes(read_file_stmt_.get(), 1u);
         auto symlink_path = reinterpret_cast<const char*>(
-            ::sqlite3_column_text(read_files_stmt_.get(), 2u));
+            ::sqlite3_column_text(read_file_stmt_.get(), 2u));
         auto symlink_path_length =
-            ::sqlite3_column_bytes(read_files_stmt_.get(), 2u);
+            ::sqlite3_column_bytes(read_file_stmt_.get(), 2u);
         if (content_hash_length > 0 && symlink_path_length > 0) {
           LOG(ERROR) << "Registed file cannot both be a file and a symlink. "
                         "Internal inconsistency.";

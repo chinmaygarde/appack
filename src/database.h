@@ -75,13 +75,13 @@ class Database final {
 
  private:
   DatabaseHandle handle_;
-  StatementHandle begin_stmt_;
-  StatementHandle commit_stmt_;
-  StatementHandle rollback_stmt_;
-  StatementHandle hash_stmt_;
-  StatementHandle content_stmt_;
+  StatementHandle begin_transaction_stmt_;
+  StatementHandle commit_transaction_stmt_;
+  StatementHandle rollback_transaction_stmt_;
+  StatementHandle insert_file_stmt_;
+  StatementHandle content_content_stmt_;
   StatementHandle insert_symlink_stmt_;
-  StatementHandle read_files_stmt_;
+  StatementHandle read_file_stmt_;
   bool is_valid_ = false;
 };
 
