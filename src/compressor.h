@@ -9,7 +9,7 @@ struct CompressedData {
   std::unique_ptr<Mapping> data;
   Range range;
 
-   operator bool() const { return !!data; }
+  operator bool() const { return !!data; }
 };
 
 CompressedData CompressMapping(const Mapping& mapping);

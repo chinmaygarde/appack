@@ -211,7 +211,7 @@ Database::GetRegisteredFiles() const {
         auto symlink_path_length =
             ::sqlite3_column_bytes(read_file_stmt_.get(), 2u);
         if (content_hash_length > 0 && symlink_path_length > 0) {
-          LOG(ERROR) << "Registed file cannot both be a file and a symlink. "
+          LOG(ERROR) << "Registered file cannot both be a file and a symlink. "
                         "Internal inconsistency.";
           return std::nullopt;
         }
