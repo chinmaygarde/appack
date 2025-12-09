@@ -60,7 +60,7 @@ class FileMapping final : public Mapping {
   bool MSync() const;
 
  private:
-  MappingHandle handle_;
+  UniqueMappingHandle handle_;
 
   FileMapping(MappingHandle handle);
 

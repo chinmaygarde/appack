@@ -120,7 +120,7 @@ bool FileMapping::MSync() const {
   if (!IsValid()) {
     return false;
   }
-  if (::msync(handle_.mapping, handle_.size, MS_SYNC) != 0) {
+  if (::msync(handle_.get().mapping, handle_.get().size, MS_SYNC) != 0) {
     PLOG(ERROR) << "Could not msync.";
     return false;
   }
@@ -128,15 +128,15 @@ bool FileMapping::MSync() const {
 }
 
 uint8_t* FileMapping::GetData() const {
-  return reinterpret_cast<uint8_t*>(handle_.mapping);
+  return reinterpret_cast<uint8_t*>(handle_.get().mapping);
 }
 
 uint64_t FileMapping::GetSize() const {
-  return handle_.size;
+  return handle_.get().size;
 }
 
 bool FileMapping::IsValid() const {
-  return !!handle_;
+  return handle_.is_valid();
 }
 
 }  // namespace pack
