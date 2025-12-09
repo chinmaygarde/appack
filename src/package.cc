@@ -3,6 +3,7 @@
 #include <absl/log/log.h>
 
 #include "compressor.h"
+#include "file_mapping.h"
 #include "hasher.h"
 
 namespace pack {

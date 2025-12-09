@@ -4,8 +4,13 @@ add_library(appack
   compressor.h
   database.cc
   database.h
+  file.cc
+  file.h
+  file_mapping.cc
+  file_mapping.h
   hasher.cc
   hasher.h
+  macros.h
   mapping.cc
   mapping.h
   mask.h

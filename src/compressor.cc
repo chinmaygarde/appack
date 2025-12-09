@@ -3,6 +3,8 @@
 #include <absl/log/log.h>
 #include <zstd.h>
 
+#include "file_mapping.h"
+
 namespace pack {
 
 CompressedData CompressMapping(const Mapping& mapping) {

@@ -1,3 +1,4 @@
+#include "file_mapping.h"
 #include "fixtures_location.h"
 #include "gtest/gtest.h"
 #include "hasher.h"
