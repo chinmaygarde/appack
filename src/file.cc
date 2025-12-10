@@ -35,7 +35,7 @@ UniqueFD OpenFile(const std::filesystem::path& file_path,
   }
   if (flags & FileFlags::kCreateIfNecessary) {
     oflag |= O_CREAT;
-    omode |= S_IRWXU | S_IRWXG | S_IRWXO;
+    omode |= S_IRWXU;
   }
   if (flags & FileFlags::kTruncateToZero) {
     oflag |= O_TRUNC;
