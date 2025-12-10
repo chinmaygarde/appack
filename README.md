@@ -2,7 +2,7 @@
 
 Thoughts and experiments on a modern application packaging and distribution mechanism.
 
-Tarballs like APKs for packaging applications are unwieldy for a number of reasons:
+Tarballs or ZIP archives like APKs for packaging applications are unwieldy for a number of reasons:
 * To get a truly portable application, there needs to be a platform/architecture specific package, or a “fat” portable package that can be installed on a number of platforms and devices. Platform/architecture specific packages are difficult to create and maintain for package authors while portable packages are unwieldy to transfer and use for end-users.
 * When a package is installed, it is hard to exfiltrate the package from the device for redistribution on the user's other devices. This is a feature for gatekeepers like the app stores.
 * On device, there is minimal sharing of resources between applications that may or may not trust or know of each other but nonetheless depend on identical resources. This is for stuff like common frameworks and assets.
